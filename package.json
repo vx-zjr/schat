@@ -1,0 +1,15 @@
+{
+  "name": "schat-control",
+  "private": true,
+  "scripts": {
+    "lint": "npm --prefix backend run lint",
+    "typecheck": "npm --prefix backend run typecheck",
+    "test": "npm --prefix backend test",
+    "build": "npm --prefix backend run build",
+    "frontend:install": "npm install --prefix frontend/shared && npm install --prefix frontend/admin && npm install --prefix frontend/user",
+    "frontend:test": "npm run test:i18n --prefix frontend/shared && npm run test:login-i18n --prefix frontend/admin && npm run test:login-i18n --prefix frontend/user",
+    "frontend:build": "npm run build --prefix frontend/shared && npm run build --prefix frontend/admin && npm run build --prefix frontend/user",
+    "frontend:dev:admin": "npm --prefix frontend/admin run dev -- --host 127.0.0.1",
+    "frontend:dev:user": "npm --prefix frontend/user run dev -- --host 127.0.0.1"
+  }
+}

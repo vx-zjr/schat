@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MASTER
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum MessageKind {
+  TEXT
+  ATTACHMENT
+  SYSTEM
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_PERMISSION_UPDATED
+  USER_BANNED
+  USER_UNBANNED
+  MESSAGE_EDITED
+  MESSAGE_DELETED
+  CONVERSATION_CREATED
+}
+
+model User {
+  id            String                     @id @default(cuid())
+  username      String                     @unique
+  passwordHash  String
+  role          UserRole                   @default(USER)
+  status        UserStatus                 @default(ACTIVE)
+  permissions   String[]                   @default([])
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  refreshTokens RefreshToken[]
+  memberships   ConversationMember[]
+  messages      Message[]
+  auditLogs     AuditLog[]                 @relation("AuditActor")
+  subscriptions NotificationSubscription[]
+  bans          Ban[]                      @relation("BannedUser")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id          String               @id @default(cuid())
+  title       String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  members     ConversationMember[]
+  messages    Message[]
+  attachments Attachment[]
+}
+
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  kind           MessageKind  @default(TEXT)
+  body           String
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id])
+  attachments    Attachment[]
+}
+
+model Attachment {
+  id             String       @id @default(cuid())
+  conversationId String
+  messageId      String?
+  objectKey      String       @unique
+  fileName       String
+  contentType    String
+  byteSize       Int
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message        Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
+}
+
+model Ban {
+  id        String    @id @default(cuid())
+  userId    String?
+  ip        String?
+  reason    String?
+  createdBy String
+  createdAt DateTime  @default(now())
+  liftedAt  DateTime?
+  user      User?     @relation("BannedUser", fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  actorId   String
+  action    AuditAction
+  targetId  String?
+  metadata  Json?
+  createdAt DateTime    @default(now())
+  actor     User        @relation("AuditActor", fields: [actorId], references: [id])
+}
+
+model NotificationSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String
+  endpoint  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, endpoint])
+}
