@@ -5,12 +5,17 @@ services:
     env_file:
       - .env.production
     depends_on:
-      - postgres
-      - redis
-      - minio
-      - livekit
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+      livekit:
+        condition: service_started
     volumes:
       - ./data/geoip:/app/data/geoip:ro
+      - ./secrets:/app/secrets:ro
     restart: unless-stopped
 
   postgres:
@@ -38,7 +43,23 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    depends_on:
+      - minio
+    env_file:
+      - .env.production
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do sleep 2; done;
+      mc mb --ignore-existing local/$$S3_BUCKET;
+      mc anonymous set none local/$$S3_BUCKET;
+      "
 
   livekit:
     image: livekit/livekit-server:v1.8
@@ -46,7 +67,9 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:1.27-bookworm
+    build:
+      context: .
+      dockerfile: infra/nginx/Dockerfile
     env_file:
       - .env.production
     depends_on:

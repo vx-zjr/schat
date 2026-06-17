@@ -30,6 +30,7 @@ export class WsJwtGuard implements CanActivate {
       role: payload.role,
       permissions: payload.permissions ?? []
     };
+    void client.join(`user:${payload.sub}`);
     return true;
   }
 }

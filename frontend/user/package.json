@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test:login-i18n": "node -e \"require('fs').rmSync('.tmp-test',{recursive:true,force:true})\" && tsc --module NodeNext --moduleResolution NodeNext --jsx react-jsx --target ES2022 --lib DOM,DOM.Iterable,ES2022 --skipLibCheck --esModuleInterop --outDir .tmp-test --noEmit false src/components/Login.tsx && node --test test/login-i18n.test.mjs",
+    "test:push": "node -e \"require('fs').rmSync('.tmp-test',{recursive:true,force:true})\" && tsc --module NodeNext --moduleResolution NodeNext --target ES2022 --lib DOM,DOM.Iterable,ES2022 --skipLibCheck --esModuleInterop --outDir .tmp-test --noEmit false src/push.ts && node --test test/push.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

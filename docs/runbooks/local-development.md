@@ -101,6 +101,21 @@ Root scripts pin Vite to `127.0.0.1` so the ports are stable for local smoke tes
 
 Both web clients default to Chinese. The login screen and authenticated shell expose a language selector with `中文` and `English`. The choice is memory-only React state and is cleared with a page reload or tab close.
 
+Mobile Expo app:
+
+```powershell
+npm.cmd run frontend:dev:mobile
+```
+
+Open it in Expo Go first. If the mobile device cannot reach `127.0.0.1`, start Expo with an API URL reachable from the device:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL="http://<lan-ip>:3000"
+npm.cmd run frontend:dev:mobile
+```
+
+The mobile client keeps auth tokens in React/TypeScript memory only and clears them on logout. It does not persist chat records locally.
+
 ## Current Debug Session
 
 The current local debug services were started from the repository root with logs written to:
@@ -138,12 +153,24 @@ npm.cmd run frontend:test
 npm.cmd run frontend:build
 ```
 
+Operations/static checks:
+
+```powershell
+npm.cmd run ops:test
+```
+
 Production Compose static validation:
 
 ```powershell
 Copy-Item .env.production.example .env.production -Force
 $env:Path='C:\Users\Administrator\scoop\shims;' + $env:Path
 docker compose --env-file .env.production -f docker-compose.production.yml config
+```
+
+Full production-stack verification with a running Docker daemon:
+
+```powershell
+pwsh ./infra/scripts/verify-production.ps1
 ```
 
 `.env.production` is ignored by git. Replace example values with real production values before deployment.
@@ -153,5 +180,5 @@ docker compose --env-file .env.production -f docker-compose.production.yml confi
 - `.env` is local-only and ignored by git.
 - Redis, MinIO, and LiveKit are not required for health/login smoke tests, but are still part of the production Compose target.
 - WSL and VirtualMachinePlatform are enabled.
-- Docker CLI and Compose are installed through Scoop, but Docker daemon/Desktop is not running on this machine. `docker compose config` works; full container startup requires a running Docker daemon.
-- MinIO is not running in local debug mode. Attachment upload intent can be tested, but direct file upload to the signed URL needs MinIO.
+- Docker CLI and Compose are installed through Scoop. With Docker Desktop running, `pwsh ./infra/scripts/verify-production.ps1` passed full production-stack startup, health/login, and MinIO object smoke verification on 2026-06-17.
+- MinIO is not running in local debug mode. Attachment upload intent can be tested locally; direct file upload and object retrieval are covered by the production verification script when the Compose stack is running.

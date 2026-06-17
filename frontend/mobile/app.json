@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "schat",
+    "slug": "schat-mobile",
+    "scheme": "schat",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.schat.mobile"
+    },
+    "android": {
+      "package": "com.schat.mobile",
+      "permissions": ["POST_NOTIFICATIONS"]
+    },
+    "plugins": ["expo-router", "expo-notifications"]
+  }
+}

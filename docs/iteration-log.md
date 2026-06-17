@@ -195,3 +195,109 @@ Verification:
 - `npm.cmd run frontend:build` passed for shared, admin, and user packages.
 - Browser smoke passed for login pages on `http://127.0.0.1:3001` and `http://127.0.0.1:3002`: default `zh-CN`, Chinese labels visible, `中文` and `English` options visible, and English switching updated page copy.
 - `GET http://127.0.0.1:3000/health` returned `{"status":"ok"}`.
+
+## 2026-06-17 - Production Closure and Native Client Hardening
+
+Goal: close the remaining documented gaps around production verification, encrypted backup/restore, GeoIP data alignment, CI Docker coverage, and the native client.
+
+Changes:
+
+- Fixed GeoIP lookup to load the documented `ip2region.xdb` file first while retaining `ip2region.db` compatibility.
+- Added `infra/scripts/verify-production.ps1` and `infra/scripts/verify-production.sh` for full Compose startup, health wait, master login smoke, GeoIP data-file warnings, and MinIO object smoke testing.
+- Changed production backups to create encrypted `*.tar.gz.enc` archives using `BACKUP_ENCRYPTION_PASSWORD`, and changed restore to decrypt those archives into a temporary restore workspace.
+- Added operation tests under `infra/test/operations.test.mjs` and root `ops:test` coverage.
+- Added CI Docker build coverage for the production Compose stack.
+- Added mobile API refresh-on-401 retry while keeping access and refresh tokens in memory only.
+- Added `frontend/mobile/README.md` and updated architecture, roadmap, deployment, local development, and backup/restore runbooks.
+- Added a Nest DI regression test for `GeoipService` and changed its test readers hook to use an optional explicit injection token so production startup does not require a synthetic `Object` provider.
+- Fixed the production image path and Prisma client runtime copy path so the container starts the compiled Nest entrypoint with generated Prisma enum exports available.
+
+Verification:
+
+- GeoIP TDD red check failed when only `ip2region.xdb` existed; green check passed after the lookup fix.
+- GeoIP production DI TDD red check failed with `Nest can't resolve dependencies of the GeoipService (AppConfig, ?)`; green check passed after the optional injection-token fix.
+- `npm.cmd run lint` passed in `backend/`.
+- `npm.cmd run typecheck` passed in `backend/`.
+- `npm.cmd test` passed in `backend/`: 17 suites, 44 tests.
+- `npm.cmd run build` passed in `backend/`.
+- `npm.cmd run ops:test` passed: 5 operation tests.
+- `npm.cmd run frontend:test` passed across shared, admin, user, and mobile checks.
+- `npm.cmd run frontend:build` passed across shared, admin, user, and mobile type checks.
+- `npm.cmd run test:api` passed in `frontend/mobile`.
+- `pwsh ./infra/scripts/verify-production.ps1` passed full production-stack verification: Compose config/build/startup, `/health`, master login, and MinIO write/read/remove smoke check. The script warned that local GeoIP data files are not installed, so `/admin/geoip` will return unknown/fallback results until `data/geoip/ip2region.xdb` and `data/geoip/GeoLite2-City.mmdb` are supplied.
+
+Remaining external acceptance:
+
+- APNs/FCM/Web Push delivery requires real provider credentials and target devices.
+- Native mobile acceptance requires Expo Go/dev-client testing on target iOS/Android devices.
+- GeoIP precision requires installing `data/geoip/ip2region.xdb` and `data/geoip/GeoLite2-City.mmdb`.
+
+## 2026-06-17 - Local Debug Session Restart
+
+Goal: start local backend and web frontend debugging services for manual inspection.
+
+Changes:
+
+- Created local ignored `backend/.env` from `backend/.env.example` with `master/master123` and local-only development secrets.
+- Started Docker-backed local dependencies because local PostgreSQL executables were not present on this machine: `schat-postgres-dev` on `5432` and `schat-redis-dev` on `6379`.
+- Applied Prisma migrations and seeded the local `master` user.
+- Started backend watch mode and both Vite web clients with logs in `backend-dev.log`, `admin-dev.log`, and `user-dev.log`.
+
+Verification:
+
+- `docker exec schat-postgres-dev pg_isready -U schat -d schat` returned accepting connections.
+- `docker exec schat-redis-dev redis-cli ping` returned `PONG`.
+- `npm.cmd run prisma:migrate` applied both local migrations successfully.
+- `npm.cmd run seed` completed successfully.
+- Backend is listening on `http://127.0.0.1:3000`; `GET /health` returned `{"status":"ok"}`.
+- Master login with `master/master123` returned access and refresh tokens.
+- `GET /openapi-json` returned HTTP 200.
+- Admin web app is listening on `http://127.0.0.1:3001` and returns the Vite root page.
+- User web app is listening on `http://127.0.0.1:3002` and returns the Vite root page.
+
+## 2026-06-17 - Mobile Debug Server Restart
+
+Goal: start the Expo mobile frontend alongside the already running backend and web clients.
+
+Changes:
+
+- Removed `expo-screen-capture` from `frontend/mobile/app.json` plugins because it is a runtime package, not a config plugin; leaving it there made Expo load package runtime code during config resolution and fail on Node 24 type stripping under `node_modules`.
+- Added `frontend/mobile/test/config.test.mjs` to keep Expo config plugins limited to packages that expose config plugins.
+- Added `frontend/mobile` `test:config` and included it in the root `frontend:test` script.
+- Started Expo from `frontend/mobile` with `EXPO_PUBLIC_API_URL=http://192.168.0.101:3000` and `npx expo start --host lan`, with logs in `mobile-dev.log` and `mobile-dev.err.log`.
+
+Verification:
+
+- TDD red check: `node --test test/config.test.mjs` failed while `expo-screen-capture` was listed in `app.json` plugins.
+- TDD green check: `node --test test/config.test.mjs` passed after removing the runtime package from plugins.
+- `npm.cmd run frontend:test` passed, including mobile API and config tests.
+- `npm.cmd run typecheck` passed in `frontend/mobile`.
+- Metro is listening on `http://127.0.0.1:8081`; `GET /status` returned `packager-status:running`.
+- The local backend health endpoint is reachable through the LAN API URL: `http://192.168.0.101:3000/health` returned `{"status":"ok"}`.
+
+## 2026-06-17 - Android Emulator Debug Session
+
+Goal: run the Expo mobile frontend directly in an Android emulator and validate a user login/chat flow.
+
+Changes:
+
+- Created Android AVD `schat_pixel_8_api_35` from the installed Android 35 Google APIs x86_64 system image.
+- Started the emulator as `emulator-5554` and installed Expo Go 56.0.1 through Expo CLI.
+- Restarted Metro with `npx expo start --host lan --port 8081`, because `--localhost` bound Metro to `::1` only and `127.0.0.1:8081` was unreachable on Windows.
+- Added `EXPO_PUBLIC_ENABLE_NATIVE_PUSH` opt-in behavior so Expo Go emulator debugging skips native remote push registration by default; Android remote push in Expo Go is unsupported from Expo SDK 53 onward and still requires a development build for real push testing.
+- Created local smoke user `android_smoke` and conversation `Android Smoke` for the mobile user-client flow.
+
+Verification:
+
+- `adb devices -l` shows `emulator-5554` in `device` state.
+- `http://192.168.0.101:8081/status` returned `packager-status:running` and `http://192.168.0.101:3000/health` returned `{"status":"ok"}`.
+- Android bundle loaded in Expo Go; logcat showed `Running "main"` and the app displayed the schat login screen.
+- Logged in on the emulator with `android_smoke/android123`; the app displayed the `Android Smoke` conversation.
+- Sent `android_smoke_message` from the emulator; the message appeared in the mobile UI and `GET /user/messages` returned the persisted message from the backend.
+- `npm.cmd run frontend:test` passed, including mobile API/config tests.
+- `npm.cmd run typecheck` passed in `frontend/mobile`.
+
+Notes:
+
+- Screenshots captured during QA: `android-clean-launch.png`, `android-login-clean-result.png`, and `android-after-send.png`.
+- Real Android push delivery remains a development-build/device-credential acceptance task; Expo Go intentionally skips it in local emulator debug mode.

@@ -45,7 +45,11 @@ export class AttachmentsService {
       contentType: attachment.contentType,
       byteSize: attachment.byteSize,
       attachment,
-      cacheControl: 'no-store'
+      cacheControl: 'no-store',
+      uploadHeaders: {
+        'Content-Type': attachment.contentType,
+        'Cache-Control': 'no-store'
+      }
     };
   }
 

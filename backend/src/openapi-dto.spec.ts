@@ -6,6 +6,7 @@ import { CreateBanDto } from './bans/dto';
 import { CreateConversationDto } from './conversations/dto';
 import { UploadIntentDto } from './attachments/dto';
 import { SendMessageDto } from './messages/dto';
+import { RegisterNotificationSubscriptionDto } from './notifications/dto';
 import { CreateUserDto, UpdatePermissionsDto, UpdateUserDto } from './users/dto';
 import { VoiceTokenDto } from './voice/dto';
 
@@ -58,6 +59,11 @@ class ContractProbeController {
 
   @Post('voice')
   voiceToken(@Body() _dto: VoiceTokenDto) {
+    return undefined;
+  }
+
+  @Post('notification-subscriptions')
+  registerNotificationSubscription(@Body() _dto: RegisterNotificationSubscriptionDto) {
     return undefined;
   }
 }
@@ -114,6 +120,9 @@ describe('OpenAPI DTO schemas', () => {
     );
     expect(schemaProperties('VoiceTokenDto')).toEqual(
       expect.objectContaining({ room: expect.any(Object) })
+    );
+    expect(schemaProperties('RegisterNotificationSubscriptionDto')).toEqual(
+      expect.objectContaining({ provider: expect.any(Object), endpoint: expect.any(Object), keys: expect.any(Object), platform: expect.any(Object), deviceId: expect.any(Object) })
     );
   });
 });

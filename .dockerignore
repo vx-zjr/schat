@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.tmp-test
+**/coverage
+*.log
+*.err.log
+.git
+.env
+.env.production
+backups

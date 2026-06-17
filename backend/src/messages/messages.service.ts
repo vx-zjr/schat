@@ -3,6 +3,7 @@ import { AuditAction, MessageKind } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { BansService } from '../bans/bans.service';
 import { ConversationsService } from '../conversations/conversations.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type SendMessageInput = {
@@ -18,7 +19,8 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly bans: BansService,
     private readonly audit: AuditService,
-    private readonly conversations: ConversationsService
+    private readonly conversations: ConversationsService,
+    private readonly notifications: NotificationsService
   ) {}
 
   listAdminMessages() {
@@ -38,7 +40,7 @@ export class MessagesService {
     if (!(await this.conversations.isMember(input.conversationId, senderId))) {
       throw new ForbiddenException('Not a conversation member');
     }
-    return this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: {
         conversationId: input.conversationId,
         senderId,
@@ -50,6 +52,16 @@ export class MessagesService {
       },
       include: { attachments: true }
     });
+    const members = await this.prisma.conversationMember.findMany({
+      where: { conversationId: input.conversationId },
+      select: { userId: true }
+    });
+    await Promise.all(
+      members
+        .filter((member) => member.userId !== senderId)
+        .map((member) => this.notifications.notifyNewMessage(member.userId, message))
+    );
+    return message;
   }
 
   async editMessage(actorId: string, id: string, body: string) {

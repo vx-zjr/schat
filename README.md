@@ -16,7 +16,7 @@ After each task, update `docs/iteration-log.md`. If the task changes architectur
 ## Layout
 
 - `backend/` - NestJS backend service.
-- `frontend/` - separate shared SDK, admin web app, and user web app.
+- `frontend/` - shared SDK, admin web app, user web app, and Expo mobile app.
 - `docs/` - project memory, architecture, decisions, contracts, runbooks, and iteration log.
 - `infra/` - deployment configuration and scripts.
 
@@ -26,5 +26,6 @@ After each task, update `docs/iteration-log.md`. If the task changes architectur
 - Swagger UI: `http://127.0.0.1:3000/openapi`
 - Admin frontend: `http://127.0.0.1:3001`
 - User frontend: `http://127.0.0.1:3002`
+- Mobile frontend: Expo dev server via `npm.cmd run frontend:dev:mobile`
 
 See `docs/runbooks/local-development.md` for setup, smoke accounts, and verification commands.

@@ -8,6 +8,12 @@ coverage/
 .turbo/
 .cache/
 .worktrees/
+.expo/
+frontend/*/.expo/
+android-*.png
+android-*.xml
+secrets/
+data/
 backend/node_modules/
 backend/dist/
 backend/coverage/

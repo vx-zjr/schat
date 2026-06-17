@@ -46,6 +46,10 @@ export class AppConfig {
     return this.config.get('S3_ENDPOINT', { infer: true });
   }
 
+  get s3PublicEndpoint(): string {
+    return this.config.get('S3_PUBLIC_ENDPOINT', { infer: true });
+  }
+
   get s3Region(): string {
     return this.config.get('S3_REGION', { infer: true });
   }
@@ -66,6 +70,10 @@ export class AppConfig {
     return Number(this.config.get('S3_SIGNED_URL_TTL_SECONDS', { infer: true }));
   }
 
+  get socketIoRedisEnabled(): boolean {
+    return this.config.get('SOCKET_IO_REDIS_ENABLED', { infer: true });
+  }
+
   get livekitUrl(): string {
     return this.config.get('LIVEKIT_URL', { infer: true });
   }
@@ -80,5 +88,45 @@ export class AppConfig {
 
   get geoipDataDir(): string {
     return this.config.get('GEOIP_DATA_DIR', { infer: true });
+  }
+
+  get vapidPublicKey(): string | undefined {
+    return this.config.get('VAPID_PUBLIC_KEY', { infer: true });
+  }
+
+  get vapidPrivateKey(): string | undefined {
+    return this.config.get('VAPID_PRIVATE_KEY', { infer: true });
+  }
+
+  get vapidSubject(): string | undefined {
+    return this.config.get('VAPID_SUBJECT', { infer: true });
+  }
+
+  get fcmProjectId(): string | undefined {
+    return this.config.get('FCM_PROJECT_ID', { infer: true });
+  }
+
+  get googleApplicationCredentials(): string | undefined {
+    return this.config.get('GOOGLE_APPLICATION_CREDENTIALS', { infer: true });
+  }
+
+  get apnsKeyId(): string | undefined {
+    return this.config.get('APNS_KEY_ID', { infer: true });
+  }
+
+  get apnsTeamId(): string | undefined {
+    return this.config.get('APNS_TEAM_ID', { infer: true });
+  }
+
+  get apnsBundleId(): string {
+    return this.config.get('APNS_BUNDLE_ID', { infer: true });
+  }
+
+  get apnsKeyPath(): string | undefined {
+    return this.config.get('APNS_KEY_PATH', { infer: true });
+  }
+
+  get apnsProduction(): boolean {
+    return this.config.get('APNS_PRODUCTION', { infer: true });
   }
 }

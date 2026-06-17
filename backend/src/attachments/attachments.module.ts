@@ -15,7 +15,7 @@ import { AttachmentsService } from './attachments.service';
       inject: [AppConfig],
       useFactory: (config: AppConfig) =>
         new S3Client({
-          endpoint: config.s3Endpoint,
+          endpoint: config.s3PublicEndpoint,
           region: config.s3Region,
           forcePathStyle: true,
           credentials: { accessKeyId: config.s3AccessKey, secretAccessKey: config.s3SecretKey }

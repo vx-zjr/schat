@@ -24,19 +24,20 @@ Primary modules:
 
 ## Frontend
 
-The current frontend is a web monorepo under `frontend/`:
+The current frontend is a monorepo under `frontend/`:
 
 - `frontend/shared` - TypeScript SDK and shared contracts for REST, Socket.IO, and i18n.
 - `frontend/admin` - Vite + React admin web app.
 - `frontend/user` - Vite + React user web app.
+- `frontend/mobile` - Expo React Native user client with memory-only auth state, Socket.IO chat, attachment upload/open, voice token request, native push registration, and screen-capture prevention.
 
 Both web clients default to Chinese (`zh-CN`) and expose a Chinese/English selector before and after login. The selected language is React state only; it is not written to localStorage, sessionStorage, IndexedDB, or another browser store.
 
-The current web apps cannot be directly compiled into React Native. A native mobile client should be a separate React Native project that reuses protocol contracts and selected shared SDK logic, while rebuilding UI, navigation, native file/media flows, push notification plumbing, and platform-specific screenshot protections with native libraries.
+The web apps are not compiled into React Native. The mobile app is a separate Expo project that reuses protocol ideas while rebuilding UI, navigation, native file/media flows, push notification plumbing, and platform-specific screenshot protections with native libraries.
 
 ## Deployment
 
-Production deployment uses Docker Compose with NestJS app, PostgreSQL, Redis, MinIO, LiveKit, and Nginx. Environment-specific values are loaded from `.env.production`; the repository only includes examples.
+Production deployment uses Docker Compose with NestJS app, PostgreSQL, Redis, MinIO, LiveKit, and Nginx. Environment-specific values are loaded from `.env.production`; the repository only includes examples. `infra/scripts/verify-production.*` performs full-stack startup, health/login, GeoIP file presence warnings, and MinIO object smoke checks. The Windows PowerShell verification path passed locally on 2026-06-17 with an active Docker daemon.
 
 ## Practical Security Boundary
 

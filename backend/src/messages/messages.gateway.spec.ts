@@ -12,6 +12,17 @@ function createClient(userId = 'user-1') {
 }
 
 describe('MessagesGateway', () => {
+  it('binds the websocket notification provider to the socket server', () => {
+    const websocketNotifications = { bind: jest.fn() };
+    const gateway = new (MessagesGateway as any)({}, {}, websocketNotifications, { socketIoRedisEnabled: false });
+    const server = { adapter: jest.fn() };
+
+    gateway.afterInit(server);
+
+    expect(websocketNotifications.bind).toHaveBeenCalledWith(server);
+    expect(server.adapter).not.toHaveBeenCalled();
+  });
+
   it('rejects joining a room when the socket user is not a conversation member', async () => {
     const conversations = { isMember: jest.fn(() => false) };
     const gateway = new (MessagesGateway as any)({});

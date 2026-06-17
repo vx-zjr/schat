@@ -4,13 +4,16 @@
   "workspaces": [
     "shared",
     "admin",
-    "user"
+    "user",
+    "mobile"
   ],
   "scripts": {
     "build:shared": "npm --workspace=shared run build",
     "dev:admin": "npm --workspace=admin run dev",
     "dev:user": "npm --workspace=user run dev",
+    "dev:mobile": "npm --workspace=mobile run start",
     "build:admin": "npm --workspace=admin run build",
-    "build:user": "npm --workspace=user run build"
+    "build:user": "npm --workspace=user run build",
+    "typecheck:mobile": "npm --workspace=mobile run typecheck"
   }
 }

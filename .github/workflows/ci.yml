@@ -44,3 +44,31 @@ jobs:
         working-directory: frontend/admin
       - run: npm run build
         working-directory: frontend/user
+      - run: npm run test:api
+        working-directory: frontend/mobile
+      - run: npm run typecheck
+        working-directory: frontend/mobile
+
+  operations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm run ops:test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+        working-directory: frontend
+      - run: npm ci
+        working-directory: backend
+      - run: cp .env.production.example .env.production
+      - run: docker compose --env-file .env.production.example -f docker-compose.production.yml config
+      - run: docker compose --env-file .env.production.example -f docker-compose.production.yml build

@@ -136,6 +136,12 @@ model NotificationSubscription {
   userId    String
   provider  String
   endpoint  String
+  p256dh    String?
+  auth      String?
+  platform  String?
+  deviceId  String?
+  revokedAt DateTime?
+  lastSeenAt DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

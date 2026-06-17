@@ -22,7 +22,21 @@ On Linux servers, use the shell equivalent after cloning the repository:
 
 ## Verify
 
-After deployment:
+After deployment, run the full verification script from the repository root:
+
+```powershell
+pwsh ./infra/scripts/verify-production.ps1
+```
+
+On Linux servers:
+
+```bash
+./infra/scripts/verify-production.sh
+```
+
+The script validates Docker Compose config, starts/rebuilds the stack, waits for `/health`, logs in as the configured master user, warns about missing GeoIP data files, and writes/reads/removes a `minio-smoke.txt` object through MinIO.
+
+Manual health check:
 
 ```bash
 curl http://$DOMAIN/health

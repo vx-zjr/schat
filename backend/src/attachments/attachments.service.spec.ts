@@ -24,5 +24,9 @@ describe('AttachmentsService', () => {
     expect(intent.byteSize).toBe(10);
     expect(intent.attachment.objectKey).toContain('conversation-1/');
     expect(intent.cacheControl).toBe('no-store');
+    expect(intent.uploadHeaders).toEqual({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'no-store'
+    });
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createTranslator, DEFAULT_LANGUAGE, LanguageCode, languages, SchatApiClient, SchatWsClient } from 'shared';
 import Login from './components/Login';
 import ChatWindow from './components/ChatWindow';
+import { deleteWebPushSubscription, registerWebPush } from './push';
 
 export type UserIdentity = {
   id: string;
@@ -28,6 +29,7 @@ export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [usersList, setUsersList] = useState<{ [userId: string]: string }>({});
+  const [webPushSubscriptionId, setWebPushSubscriptionId] = useState<string | null>(null);
   const t = createTranslator(language);
 
   useEffect(() => {
@@ -59,6 +61,7 @@ export default function App() {
     setUser(null);
     setConversations([]);
     setActiveConv(null);
+    setWebPushSubscriptionId(null);
     if (wsClient) {
       wsClient.disconnect();
     }
@@ -101,6 +104,10 @@ export default function App() {
         console.log('Skipping users query (restricted role)');
         mappingFallback(convList, profile);
       }
+
+      registerWebPush(apiClient)
+        .then(setWebPushSubscriptionId)
+        .catch((error) => console.info('Web Push registration skipped', error));
     } catch (err: any) {
       console.error(err);
       setLoginError(err.response?.data?.message || err.message || t('user.login.failed'));
@@ -123,6 +130,7 @@ export default function App() {
     if (!apiClient) return;
     try {
       const rfToken = apiClient.getRefreshToken();
+      await deleteWebPushSubscription(apiClient, webPushSubscriptionId);
       if (rfToken) {
         await apiClient.post('/auth/logout', { refreshToken: rfToken });
       }

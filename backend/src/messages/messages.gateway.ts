@@ -1,20 +1,37 @@
-import { UseGuards } from '@nestjs/common';
-import { ConnectedSocket, MessageBody, OnGatewayConnection, SubscribeMessage, WebSocketGateway, WebSocketServer, WsException } from '@nestjs/websockets';
+import { Optional, UseGuards } from '@nestjs/common';
+import { createAdapter } from '@socket.io/redis-adapter';
+import Redis from 'ioredis';
+import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer, WsException } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { AppConfig } from '../config/app-config';
 import { WsJwtGuard } from '../auth/ws-jwt.guard';
 import { ConversationsService } from '../conversations/conversations.service';
+import { WebsocketNotificationProvider } from '../notifications/websocket-notification.provider';
 import { SendMessageDto } from './dto';
 import { MessagesService } from './messages.service';
 
 @WebSocketGateway({ cors: true })
-export class MessagesGateway implements OnGatewayConnection {
+export class MessagesGateway implements OnGatewayConnection, OnGatewayInit {
   @WebSocketServer()
   server!: Server;
 
   constructor(
     private readonly messages: MessagesService,
-    private readonly conversations: ConversationsService
+    private readonly conversations: ConversationsService,
+    @Optional() private readonly websocketNotifications?: WebsocketNotificationProvider,
+    @Optional() private readonly config?: AppConfig
   ) {}
+
+  afterInit(server: Server) {
+    this.websocketNotifications?.bind(server);
+    if (!this.config?.socketIoRedisEnabled) {
+      return;
+    }
+
+    const pubClient = new Redis(this.config.redisUrl);
+    const subClient = pubClient.duplicate();
+    server.adapter(createAdapter(pubClient, subClient));
+  }
 
   handleConnection(client: Socket) {
     client.emit('presence.updated', { socketId: client.id, online: true });

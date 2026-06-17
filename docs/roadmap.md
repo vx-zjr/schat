@@ -9,7 +9,7 @@
 5. Implement attachments, IP region lookup, voice tokens, and notification providers.
 6. Add production Docker Compose, Nginx, backup/restore scripts, CI, and runbooks.
 
-Status: implemented and locally verified, except full container startup still depends on a running Docker daemon.
+Status: implemented and verified. Backend/frontend automated checks pass, CI covers the production Docker build, and `infra/scripts/verify-production.ps1` passed full local Compose startup, health/login, and MinIO object smoke verification on 2026-06-17.
 
 ## Phase 2 - Web Clients and Local Debug
 
@@ -26,6 +26,8 @@ Status: implemented for the current web clients.
 1. Create a separate React Native app if mobile native delivery is required.
 2. Reuse `frontend/shared` protocol/client ideas where practical.
 3. Rebuild UI, storage policy, file/media handling, push notifications, and screenshot protections with React Native/native APIs.
+
+Status: native Expo client scaffold is implemented under `frontend/mobile` with in-memory auth, Socket.IO chat, attachment upload/open, voice token request, APNs/FCM registration payloads, and screen-capture prevention. Automated API/type checks pass locally; final device acceptance still requires Expo Go/dev-client testing on target iOS/Android devices with real APNs/FCM credentials.
 
 ## Out of Scope
 
