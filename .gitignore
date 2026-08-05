@@ -8,6 +8,7 @@ coverage/
 .turbo/
 .cache/
 .worktrees/
+.superpowers/
 .expo/
 frontend/*/.expo/
 android-*.png
