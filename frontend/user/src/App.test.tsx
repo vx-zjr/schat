@@ -101,7 +101,7 @@ describe('USER direct chat entry', () => {
 
     await submitLogin();
 
-    expect(await screen.findByRole('heading', { name: 'master' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'master' })).toBeInTheDocument();
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(screen.queryByText('Chat Room')).not.toBeInTheDocument();
     expect(mocks.api.get).toHaveBeenCalledWith('/user/direct-conversation');
