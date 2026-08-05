@@ -1,7 +1,7 @@
 export type UserIdentity = {
   id: string;
   username: string;
-  role: 'MASTER' | 'ADMIN' | 'USER';
+  role: 'MASTER' | 'USER';
   status: 'ACTIVE' | 'DISABLED';
   permissions: string[];
 };

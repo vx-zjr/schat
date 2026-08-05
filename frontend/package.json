@@ -8,6 +8,7 @@
     "mobile"
   ],
   "scripts": {
+    "test:e2e": "playwright test -c playwright.config.ts",
     "build:shared": "npm --workspace=shared run build",
     "dev:admin": "npm --workspace=admin run dev",
     "dev:user": "npm --workspace=user run dev",
@@ -15,5 +16,8 @@
     "build:admin": "npm --workspace=admin run build",
     "build:user": "npm --workspace=user run build",
     "typecheck:mobile": "npm --workspace=mobile run typecheck"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
   }
 }

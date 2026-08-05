@@ -1,7 +1,7 @@
 # MASTER–USER Direct Chat Design
 
 **Date:** 2026-08-05  
-**Status:** Approved  
+**Status:** Implemented
 **Scope:** Automatic direct-conversation provisioning and a single-purpose USER web client
 
 ## Context
