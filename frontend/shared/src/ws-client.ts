@@ -4,9 +4,12 @@ export interface WsClientConfig {
   url: string;
 }
 
+type EventListener = (...args: any[]) => void;
+
 export class SchatWsClient {
   private socket: Socket | null = null;
   private url: string;
+  private listeners = new Map<string, Set<EventListener>>();
 
   constructor(config: WsClientConfig) {
     this.url = config.url;
@@ -26,6 +29,10 @@ export class SchatWsClient {
       transports: ['websocket', 'polling']
     });
 
+    this.listeners.forEach((callbacks, event) => {
+      callbacks.forEach((callback) => this.socket?.on(event, callback));
+    });
+
     return this.socket;
   }
 
@@ -36,13 +43,18 @@ export class SchatWsClient {
     }
   }
 
-  public off(event: string, cb?: (...args: any[]) => void) {
-    if (!this.socket) return;
+  public off(event: string, cb?: EventListener) {
     if (cb) {
-      this.socket.off(event, cb);
+      const callbacks = this.listeners.get(event);
+      callbacks?.delete(cb);
+      if (callbacks?.size === 0) {
+        this.listeners.delete(event);
+      }
+      this.socket?.off(event, cb);
       return;
     }
-    this.socket.off(event);
+    this.listeners.delete(event);
+    this.socket?.off(event);
   }
 
   public isConnected() {
@@ -70,49 +82,50 @@ export class SchatWsClient {
     this.socket.emit('typing.update', { conversationId, typing });
   }
 
+  private subscribe(event: string, cb: EventListener) {
+    const callbacks = this.listeners.get(event) ?? new Set<EventListener>();
+    if (!callbacks.has(cb)) {
+      callbacks.add(cb);
+      this.listeners.set(event, callbacks);
+      this.socket?.on(event, cb);
+    }
+    return () => this.off(event, cb);
+  }
+
   // Event Subscription methods
   public onConnect(cb: () => void) {
-    this.socket?.on('connect', cb);
-    return () => this.off('connect', cb);
+    return this.subscribe('connect', cb);
   }
 
   public onDisconnect(cb: (reason: string) => void) {
-    this.socket?.on('disconnect', cb);
-    return () => this.off('disconnect', cb);
+    return this.subscribe('disconnect', cb);
   }
 
   public onConnectError(cb: (err: any) => void) {
-    this.socket?.on('connect_error', cb);
-    return () => this.off('connect_error', cb);
+    return this.subscribe('connect_error', cb);
   }
 
   public onMessageCreated(cb: (message: any) => void) {
-    this.socket?.on('message.created', cb);
-    return () => this.off('message.created', cb);
+    return this.subscribe('message.created', cb);
   }
 
   public onMessageEdited(cb: (message: any) => void) {
-    this.socket?.on('message.edited', cb);
-    return () => this.off('message.edited', cb);
+    return this.subscribe('message.edited', cb);
   }
 
   public onMessageDeleted(cb: (message: any) => void) {
-    this.socket?.on('message.deleted', cb);
-    return () => this.off('message.deleted', cb);
+    return this.subscribe('message.deleted', cb);
   }
 
   public onPresenceUpdated(cb: (presence: any) => void) {
-    this.socket?.on('presence.updated', cb);
-    return () => this.off('presence.updated', cb);
+    return this.subscribe('presence.updated', cb);
   }
 
   public onNotificationCreated(cb: (notification: any) => void) {
-    this.socket?.on('notification.created', cb);
-    return () => this.off('notification.created', cb);
+    return this.subscribe('notification.created', cb);
   }
 
   public onUserBanned(cb: (data: any) => void) {
-    this.socket?.on('user.banned', cb);
-    return () => this.off('user.banned', cb);
+    return this.subscribe('user.banned', cb);
   }
 }
