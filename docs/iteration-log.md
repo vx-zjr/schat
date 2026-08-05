@@ -1,5 +1,23 @@
 # Iteration Log
 
+## 2026-08-05 - Security and Production Hardening Design
+
+Goal: design a coordinated fix for the reported authorization, ban enforcement, attachment, voice, TLS, LiveKit, realtime, backup, CI, dependency, and documentation gaps.
+
+Decisions:
+
+- Reduce roles to one immutable `MASTER` and permission-bearing `USER` accounts.
+- Reload account state, permissions, and bans from PostgreSQL on each HTTP request and Socket.IO event.
+- Enforce conversation membership for attachments and LiveKit voice tokens.
+- Use two public DNS names with Let's Encrypt: one for Web/API/attachments and one for LiveKit signaling.
+- Add Redis-backed login throttling, conversation cursor pagination, realtime mutation broadcasts, invalid push-subscription cleanup, and real PostgreSQL/Redis E2E tests.
+- Make backups byte-safe on PowerShell 5.1, add POSIX backup/restore parity, and require reproducible `npm ci` builds.
+
+Status:
+
+- Design approved by the owner and recorded in `docs/superpowers/specs/2026-08-05-security-production-hardening-design.md`.
+- Implementation plan and production changes remain to be completed.
+
 ## 2026-06-17 - Project Initialization
 
 Goal: implement the backend and production deployment plan from `TECH_STACK.md` without frontend work.
