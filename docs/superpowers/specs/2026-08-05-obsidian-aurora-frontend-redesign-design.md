@@ -15,7 +15,7 @@ The redesign keeps both clients' existing business behavior and applies a shared
 - Give the administration and user clients one coherent, polished visual language without erasing their different information-density needs.
 - Make both clients excellent on phone-sized viewports, including safe areas, virtual keyboards, touch targets, and narrow navigation.
 - Use Motion consistently for route, presence, layout, list, dialog, drawer, message, and control transitions.
-- Preserve existing API, WebSocket, authorization, conversation, push, attachment, and administration behavior.
+- Preserve administration behavior and existing chat, WebSocket, push, and attachment capabilities while consuming the separately approved direct-conversation API and USER flow.
 - Provide explicit loading, empty, success, and failure feedback for important actions.
 - Respect reduced-motion, keyboard, screen-reader, contrast, and touch accessibility requirements.
 - Prevent the richer visual treatment from creating visible mobile jank or large avoidable startup cost.
@@ -23,7 +23,7 @@ The redesign keeps both clients' existing business behavior and applies a shared
 
 ## Non-goals
 
-- Changing backend endpoints, request shapes, authorization rules, or WebSocket protocols.
+- Independently changing backend endpoints, request shapes, authorization rules, or WebSocket protocols beyond the direct-chat and security-hardening specifications.
 - Adding new messaging capabilities such as reactions, threads, message mutation, or new attachment types.
 - Replacing React, Vite, or the existing shared networking package.
 - Making desktop-only dashboard visualizations or decorative effects the focus of the release.
@@ -44,7 +44,7 @@ Continuous decorative motion is limited to slow, low-amplitude background breath
 Both clients are designed mobile-first.
 
 - Phone layouts are the primary composition and interaction target.
-- Tablet and desktop layouts progressively expose sidebars, multi-column views, full tables, and persistent utility controls.
+- Tablet and desktop administration layouts progressively expose sidebars, multi-column views, full tables, and persistent utility controls. The USER client remains a single direct-chat surface at every size.
 - No supported viewport may require page-level horizontal scrolling.
 - Phone touch targets are at least 44 by 44 CSS pixels.
 - Safe-area insets are applied to fixed headers, bottom navigation, drawers, and the message composer.
@@ -58,17 +58,21 @@ Tablet and desktop need complete functionality and clean use of space, but do no
 
 The administration client is organized around an `AdminShell`.
 
-On phones, the shell contains a compact top bar, bottom primary navigation, and an on-demand draggable drawer for secondary destinations and account actions. Overview metrics use a single-column or compact two-column card grid depending on available width. Data tables transform into labeled record cards; record actions remain visible and batch actions move into a reachable bottom action bar. Dialogs become bottom sheets when that improves reachability, while destructive confirmations remain explicit modal interruptions.
+On phones, the shell contains no persistent left rail, sidebar, or page-width option panel. A compact top bar identifies the current module and exposes only its contextual action plus an account trigger. A safe-area-aware bottom bar provides four always-visible primary destinations: conversations, users, bans, and tools/GeoIP. Language, theme, signed-in identity, and logout live in an account bottom sheet opened from the top-right trigger.
+
+Overview metrics use a single-column or compact two-column card grid depending on available width. Data tables transform into labeled record cards; record actions remain visible and secondary or batch actions move into a reachable bottom action sheet. Dialogs become bottom sheets when that improves reachability, while destructive confirmations remain explicit modal interruptions.
+
+The phone conversation module has two full-width states instead of an inner left column. Its initial state is the conversation list, with create-conversation in the top bar. Selecting a conversation replaces the list with the full-height chat and a clearly labeled back action. The room list and message view are never displayed side by side on a phone.
 
 On tablet and desktop, the navigation expands into a persistent rail or sidebar. Panels display full data tables where appropriate, and filters/actions remain in a stable toolbar. Existing `UsersPanel`, `ConversationsPanel`, `BansPanel`, and `GeoIpPanel` retain their business responsibility and data flow.
 
 ### User client
 
-The user client is organized around a `ChatShell`.
+The user client is organized around a single-purpose direct `ChatShell` and consumes the direct-conversation behavior specified in `2026-08-05-master-user-direct-chat-design.md`.
 
-On phones, conversation discovery and an active conversation are focused single-column states. Primary destinations use bottom navigation. Opening a conversation transitions to a full-height chat view with a compact header and a composer pinned above the safe area and virtual keyboard. Conversation details and secondary actions use drawers or sheets instead of permanently consuming width.
+On phones, the client has no sidebar, conversation card, room picker, bottom navigation, identity panel, or settings sheet. Successful USER login transitions directly into the dedicated MASTER conversation. A compact chat header shows the MASTER identity and presence, with small language, light/dark, and logout icon controls in the corner. The composer is pinned above the safe area and virtual keyboard, and attachment upload is reached beside the message field.
 
-On tablet and desktop, the conversation list and active chat expand into a two-column layout. The active conversation remains visually dominant. `ChatWindow` continues to own the conversation experience, while the presentation separates the message list, message bubble, status indicator, unread affordance, and composer into focused components. `AttachmentUpload` appears as an inline progress card that resolves smoothly into success or failure state.
+On tablet and desktop, the same direct chat is centered within a readable maximum width; a conversation sidebar is not restored. `ChatWindow` continues to own the conversation experience, while the presentation separates the message list, message bubble, status indicator, unread affordance, and composer into focused components. `AttachmentUpload` appears as an inline progress card that resolves smoothly into success or failure state.
 
 ## Motion System
 
@@ -103,13 +107,13 @@ Inline presentation styles are migrated into semantic class names and centralize
 - z-index layers for navigation, overlays, drawers, dialogs, and toasts;
 - motion durations, springs, distances, and stagger values.
 
-The administration application adds reusable shell, toolbar, record-card, responsive table, empty-state, skeleton, toast, modal/sheet, and icon-button patterns. The user application adds reusable conversation item, message bubble, composer, presence, unread indicator, upload status, drawer/sheet, toast, and icon-button patterns. Lucide React supplies a consistent icon vocabulary; icons always receive accessible labels where meaning is not duplicated by visible text.
+The administration application adds reusable shell, phone bottom navigation, account sheet, toolbar, record-card, responsive table, empty-state, skeleton, toast, modal/sheet, and icon-button patterns. The user application adds a direct-chat shell, utility-icon cluster, message bubble, composer, presence, unread indicator, upload status, toast, and icon-button patterns. It does not add a conversation item, room navigation, or settings surface. Lucide React supplies a consistent icon vocabulary; icons always receive accessible labels where meaning is not duplicated by visible text.
 
 The existing `frontend/shared` package remains focused on networking and language helpers. It does not gain a React peer dependency. Cross-client design values may live in a CSS token source and dependency-free TypeScript constants, while React motion primitives remain inside the consuming applications.
 
 ## Data Flow and State Feedback
 
-Existing request and socket ownership remains unchanged. Presentation components receive the same domain data and invoke the same callbacks as before. Responsive variants render the same records and actions rather than maintaining separate phone and desktop data requests.
+Administration request and socket ownership remains unchanged. The USER client adopts the singular direct-conversation request and socket join flow defined by the direct-chat specification. Presentation components receive domain data through their owning application, and responsive variants render the same records and actions rather than maintaining separate phone and desktop requests.
 
 Each asynchronous operation must expose an intentional state:
 
@@ -153,10 +157,12 @@ Verification has three layers.
 Browser verification covers:
 
 - administration and user login, validation, loading, and failure;
-- mobile administration navigation and each existing panel;
+- mobile administration bottom navigation, account sheet, and each existing panel;
+- the administration conversation-list-to-full-chat transition and its back action;
 - responsive table-to-card presentation and action reachability;
-- user conversation selection, message send, unread affordance, presence, and attachment upload;
+- automatic USER entry into the MASTER chat, message send, unread affordance, presence, and attachment upload;
 - drawers, sheets, dialogs, toasts, keyboard focus, and Escape behavior;
+- absence of persistent phone sidebars in both clients;
 - phone safe areas, landscape, virtual-keyboard behavior, and horizontal overflow;
 - reduced-motion emulation;
 - layout stability and obvious frame drops during primary transitions.
@@ -165,9 +171,11 @@ Downloads during implementation may use the owner-provided local proxy at `127.0
 
 ## Acceptance Criteria
 
-- Both clients preserve their existing functional behavior and pass existing tests and production builds.
-- Phone-sized layouts are the most polished supported experience and contain no page-level horizontal overflow.
-- Tablet and desktop expose all current functions with coherent expanded layouts.
+- Both clients preserve in-scope functional behavior, except for the explicitly superseded USER multi-conversation flow, and pass their updated tests and production builds.
+- Phone-sized layouts are the most polished supported experience, contain no persistent left sidebar or page-width option panel, and have no page-level horizontal overflow.
+- Every existing administration destination remains reachable from the phone shell in no more than two actions.
+- The USER client opens one full-width direct chat after login and never renders a room list at any viewport size.
+- Tablet and desktop expose all in-scope functions with coherent expanded layouts.
 - Page, navigation, drawer, dialog, list, message, control, loading, and feedback transitions are consistently implemented through Motion.
 - The selected Obsidian Aurora visual system is recognizable in both clients without obscuring data or conversation content.
 - Important operations always expose loading, success, empty, and failure feedback as applicable.

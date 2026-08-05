@@ -145,6 +145,8 @@ Theme is stored as `light` or `dark`. On first visit, the client follows `prefer
 
 Phones use the full dynamic viewport with safe-area padding. The composer stays above the on-screen keyboard, and controls retain touch-friendly hit areas. Tablet and desktop layouts center the single chat surface and apply a readable maximum width instead of restoring a sidebar.
 
+No authenticated USER viewport renders the legacy left option panel, room card, identity block, language select, or full-width logout button. On phones the chat consumes the entire viewport. Its compact header presents the MASTER username and presence on the left and the language, theme, and logout icons on the right. Attachment upload moves beside the message field so it remains reachable without a separate panel or navigation destination.
+
 The transition from initialization to chat uses a short opacity/position entrance. Message insertion, upload state, and typing feedback keep restrained motion and honor `prefers-reduced-motion`. No animation delays access to the composer.
 
 ## Realtime and Cleanup
@@ -194,6 +196,7 @@ Changing theme or language is presentation-only and must not affect authenticati
 
 - Valid USER login automatically renders the MASTER chat.
 - No room list, room selector, identity panel, settings navigation, or `/admin/users` call occurs.
+- No persistent left option panel appears at phone, tablet, or desktop viewport sizes.
 - MASTER login is cleared and redirected to the administration-client guidance state.
 - Language and theme icons work on login and chat screens and persist across remounts.
 - Logout clears session state while preserving language and theme.
@@ -216,9 +219,9 @@ Run the flow at phone, tablet, and desktop viewports, with phone keyboard, safe-
 
 ## Coordination with the Frontend Redesign
 
-This specification supersedes the multi-conversation `ChatShell`, conversation-list, bottom-navigation, and settings-sheet requirements in `2026-08-05-obsidian-aurora-frontend-redesign-design.md` and its USER implementation plan. The approved Obsidian Aurora visual tokens, responsive quality, motion principles, message components, upload treatment, accessibility, and reduced-motion support remain applicable.
+This specification supersedes the multi-conversation `ChatShell`, conversation-list, USER bottom-navigation, and settings-sheet requirements in the original Obsidian Aurora design and its USER implementation plan. The companion frontend design has been revised to make this relationship explicit. The approved Obsidian Aurora visual tokens, responsive quality, motion principles, message components, upload treatment, accessibility, and reduced-motion support remain applicable.
 
-The existing USER frontend implementation plan must be rewritten around a direct-chat shell before implementation. The administration frontend plan is unchanged.
+The existing USER frontend implementation plan must be rewritten around a direct-chat shell before implementation. The administration frontend plan must also be revised so phone layouts use the approved four-item bottom navigation, account sheet, full-width conversation list, and full-width active-chat state instead of any persistent sidebar. Tablet and desktop administration sidebars remain valid.
 
 ## Acceptance Criteria
 
@@ -227,6 +230,7 @@ The existing USER frontend implementation plan must be rewritten around a direct
 - A USER can retrieve only its own direct conversation through the singular endpoint.
 - Successful USER login opens that chat automatically without showing or fetching a conversation list.
 - The authenticated USER screen contains no unrelated options; only chat actions plus compact language, theme, and logout controls remain.
+- No USER viewport renders a persistent left option panel, and phone chat content occupies the full available width.
 - Login, logout, attachment transfer, push registration, message state, typing state, and realtime send/receive remain functional.
 - Language and theme persist independently from authentication and do not reconnect the chat.
 - Phone behavior is production-ready, while tablet and desktop remain fully usable.
