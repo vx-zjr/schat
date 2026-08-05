@@ -98,10 +98,10 @@ describe('OpenAPI DTO schemas', () => {
       expect.objectContaining({ refreshToken: expect.any(Object) })
     );
     expect(schemaProperties('CreateUserDto')).toEqual(
-      expect.objectContaining({ username: expect.any(Object), password: expect.any(Object), role: expect.any(Object) })
+      { username: expect.any(Object), password: expect.any(Object) }
     );
     expect(schemaProperties('UpdateUserDto')).toEqual(
-      expect.objectContaining({ status: expect.any(Object), role: expect.any(Object) })
+      { status: expect.any(Object) }
     );
     expect(schemaProperties('UpdatePermissionsDto')).toEqual(
       expect.objectContaining({ permissions: expect.any(Object) })
