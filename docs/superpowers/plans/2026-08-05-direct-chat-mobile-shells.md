@@ -104,37 +104,13 @@
 - Produces: `Conversation.directUserId: string | null`, `User.directConversation`, and a `UserRole` enum containing only `MASTER | USER`.
 - Preserves: nullable `directUserId` on historical/group conversations and ordinary `ConversationMember` authorization.
 
-- [ ] **Step 1: Write the failing role and provisioning-shape tests**
+- [ ] **Step 1: Write the failing role-contract test**
 
-Replace the role-update test in `users.service.spec.ts` with assertions that new users are always USER and that service input has no role behavior:
+Replace the legacy ADMIN role-update test in `users.service.spec.ts` with a contract assertion over the generated Prisma enum:
 
 ```ts
-it('always provisions a USER regardless of delegated creator identity', async () => {
-  const tx = {
-    user: {
-      findMany: jest.fn().mockResolvedValue([{ id: 'master-1' }]),
-      create: jest.fn(({ data }) => Promise.resolve({ id: 'user-1', ...data }))
-    },
-    conversation: {
-      create: jest.fn(({ data }) => Promise.resolve({ id: 'direct-1', ...data }))
-    }
-  };
-  const prisma: any = { $transaction: jest.fn((work) => work(tx)) };
-  const audit: any = { record: jest.fn().mockResolvedValue(undefined) };
-  const service = new UsersService(prisma, audit);
-
-  const user = await service.createUser('delegated-operator', {
-    username: 'alice',
-    password: 'secret'
-  });
-
-  expect(user.role).toBe(UserRole.USER);
-  expect(tx.conversation.create).toHaveBeenCalledWith(expect.objectContaining({
-    data: expect.objectContaining({
-      directUserId: 'user-1',
-      members: { create: [{ userId: 'master-1' }, { userId: 'user-1' }] }
-    })
-  }));
+it('exposes only MASTER and USER roles', () => {
+  expect(Object.values(UserRole)).toEqual([UserRole.MASTER, UserRole.USER]);
 });
 ```
 
@@ -146,7 +122,7 @@ Run:
 npm --prefix backend test -- users/users.service.spec.ts
 ```
 
-Expected: FAIL because `createUser` does not use a transaction or create a direct conversation.
+Expected: FAIL because the generated enum still includes `ADMIN`.
 
 - [ ] **Step 3: Update the Prisma schema**
 
@@ -255,10 +231,11 @@ Run:
 
 ```powershell
 npm --prefix backend run prisma:generate
+npm --prefix backend test -- users/users.service.spec.ts
 npm --prefix backend run typecheck
 ```
 
-Expected: Prisma generation and backend typecheck pass. The replaced service test removes the only backend `UserRole.ADMIN` literal before this command runs.
+Expected: Prisma generation, the focused role-contract test, and backend typecheck pass.
 
 - [ ] **Step 7: Commit the schema boundary**
 
@@ -280,9 +257,49 @@ git commit -m "feat(auth): enforce master and user roles"
 - Consumes: `Conversation.directUserId` and two-role Prisma client from Task 1.
 - Produces: `AuditService.record(actorId, action, targetId?, metadata?, client?)` and atomic `UsersService.createUser(actorId, { username, password })`.
 
-- [ ] **Step 1: Complete failing transaction tests**
+- [ ] **Step 1: Write the failing transaction tests**
 
-Add tests for missing/multiple MASTER and audit writes through the transaction client:
+Add the happy-path provisioning test:
+
+```ts
+it('always provisions a USER and its MASTER conversation atomically', async () => {
+  const tx = {
+    user: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'master-1' }]),
+      create: jest.fn(({ data }) => Promise.resolve({ id: 'user-1', ...data }))
+    },
+    conversation: {
+      create: jest.fn(({ data }) => Promise.resolve({ id: 'direct-1', ...data }))
+    },
+    auditLog: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) }
+  };
+  const prisma: any = { $transaction: jest.fn((work) => work(tx)) };
+  const audit: any = { record: jest.fn().mockResolvedValue(undefined) };
+  const service = new UsersService(prisma, audit);
+
+  const user = await service.createUser('delegated-operator', {
+    username: 'alice',
+    password: 'secret'
+  });
+
+  expect(user.role).toBe(UserRole.USER);
+  expect(tx.conversation.create).toHaveBeenCalledWith(expect.objectContaining({
+    data: expect.objectContaining({
+      directUserId: 'user-1',
+      members: { create: [{ userId: 'master-1' }, { userId: 'user-1' }] }
+    })
+  }));
+  expect(audit.record).toHaveBeenCalledWith(
+    'delegated-operator',
+    AuditAction.USER_CREATED,
+    'user-1',
+    { username: 'alice' },
+    tx
+  );
+});
+```
+
+Add cases for missing/multiple MASTER and audit writes through the transaction client:
 
 ```ts
 it.each([[], [{ id: 'm1' }, { id: 'm2' }]])(
@@ -537,10 +554,11 @@ test('defaults language and follows system theme before persisting choices', () 
 - [ ] **Step 2: Run the shared test and verify failure**
 
 ```powershell
-npm --prefix frontend/shared run test:i18n
+npm --prefix frontend/shared run build
+node --test frontend/shared/test/preferences.test.mjs
 ```
 
-Expected: FAIL because `preferences` is not exported.
+Expected: FAIL because `dist/preferences.js` does not exist yet.
 
 - [ ] **Step 3: Implement dependency-free preferences**
 
