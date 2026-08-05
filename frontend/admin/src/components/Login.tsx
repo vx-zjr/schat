@@ -25,12 +25,12 @@ export default function Login({ onLogin, error, t, language, onLanguageChange }:
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      height: '100vh',
+      minHeight: '100dvh',
       width: '100vw',
       background: 'radial-gradient(circle at 50% 50%, #1e1b4b 0%, #03001e 100%)'
     }}>
       <div className="glass-panel" style={{
-        width: '400px',
+        width: 'min(400px, calc(100vw - 32px))',
         padding: '40px',
         boxShadow: '0 0 50px rgba(99, 102, 241, 0.2)',
         textAlign: 'center'

@@ -1,59 +1,81 @@
-import { useState, useEffect } from 'react';
-import { createTranslator, DEFAULT_LANGUAGE, LanguageCode, languages, SchatApiClient, SchatWsClient } from 'shared';
+import { useEffect, useRef, useState } from 'react';
+import {
+  applyTheme,
+  createTranslator,
+  readLanguage,
+  readTheme,
+  SchatApiClient,
+  SchatWsClient,
+  writeLanguage,
+  writeTheme,
+  type LanguageCode,
+  type ThemeMode
+} from 'shared';
 import Login from './components/Login';
 import UsersPanel from './components/UsersPanel';
 import BansPanel from './components/BansPanel';
 import ConversationsPanel from './components/ConversationsPanel';
 import GeoIpPanel from './components/GeoIpPanel';
+import AdminShell from './layout/AdminShell';
+import type { AdminPanel } from './types';
 
 export type UserIdentity = {
   id: string;
   username: string;
-  role: 'MASTER' | 'ADMIN' | 'USER';
+  role: 'MASTER' | 'USER';
   status: 'ACTIVE' | 'DISABLED';
   permissions: string[];
 };
 
 export default function App() {
   const [user, setUser] = useState<UserIdentity | null>(null);
-  const [activePanel, setActivePanel] = useState<'chat' | 'users' | 'bans' | 'geoip'>('chat');
+  const [activePanel, setActivePanel] = useState<AdminPanel>('chat');
   const [apiClient, setApiClient] = useState<SchatApiClient | null>(null);
   const [wsClient, setWsClient] = useState<SchatWsClient | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [language, setLanguage] = useState<LanguageCode>(DEFAULT_LANGUAGE);
+  const [language, setLanguage] = useState<LanguageCode>(() => readLanguage(window.localStorage));
+  const [theme, setTheme] = useState<ThemeMode>(() => readTheme(
+    window.localStorage,
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  ));
+  const wsClientRef = useRef<SchatWsClient | null>(null);
   const t = createTranslator(language);
 
-  // Initialize API Client on startup
+  const handleLogoutLocal = () => {
+    setUser(null);
+    wsClientRef.current?.disconnect();
+  };
+
   useEffect(() => {
+    applyTheme(document.documentElement, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const ws = new SchatWsClient({ url: window.location.origin });
     const api = new SchatApiClient({
       baseURL: '',
-      onLogout: () => {
-        handleLogoutLocal();
-      },
-      onTokenRefreshed: (access) => {
-        if (wsClient) {
-          wsClient.connect(access);
-        }
-      }
+      onLogout: handleLogoutLocal,
+      onTokenRefreshed: (access) => wsClientRef.current?.connect(access)
     });
 
-    const ws = new SchatWsClient({
-      url: window.location.origin
-    });
-
+    wsClientRef.current = ws;
     setApiClient(api);
     setWsClient(ws);
 
     return () => {
       ws.disconnect();
+      wsClientRef.current = null;
     };
   }, []);
 
-  const handleLogoutLocal = () => {
-    setUser(null);
-    if (wsClient) {
-      wsClient.disconnect();
-    }
+  const handleLanguageChange = (nextLanguage: LanguageCode) => {
+    setLanguage(nextLanguage);
+    writeLanguage(window.localStorage, nextLanguage);
+  };
+
+  const handleThemeChange = (nextTheme: ThemeMode) => {
+    setTheme(nextTheme);
+    writeTheme(window.localStorage, nextTheme);
   };
 
   const handleLogin = async (username: string, password: string) => {
@@ -61,16 +83,12 @@ export default function App() {
     setLoginError(null);
 
     try {
-      const data = await apiClient.post<{
-        accessToken: string;
-        refreshToken: string;
-      }>('/auth/login', { username, password });
-
+      const data = await apiClient.post<{ accessToken: string; refreshToken: string }>('/auth/login', { username, password });
       apiClient.setTokens(data.accessToken, data.refreshToken);
 
-      // Fetch profile identity
       const profile = await apiClient.get<UserIdentity>('/auth/me');
-      if (profile.role === 'USER') {
+      if (profile.role === 'USER' && profile.permissions.length === 0) {
+        apiClient.setTokens(null, null);
         throw new Error(t('admin.login.denied'));
       }
 
@@ -85,12 +103,12 @@ export default function App() {
   const handleLogout = async () => {
     if (!apiClient) return;
     try {
-      const rfToken = apiClient.getRefreshToken();
-      if (rfToken) {
-        await apiClient.post('/auth/logout', { refreshToken: rfToken });
+      const refreshToken = apiClient.getRefreshToken();
+      if (refreshToken) {
+        await apiClient.post('/auth/logout', { refreshToken });
       }
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
       apiClient.setTokens(null, null);
       handleLogoutLocal();
@@ -111,15 +129,7 @@ export default function App() {
   }
 
   if (!user) {
-    return (
-      <Login
-        onLogin={handleLogin}
-        error={loginError}
-        t={t}
-        language={language}
-        onLanguageChange={setLanguage}
-      />
-    );
+    return <Login onLogin={handleLogin} error={loginError} t={t} language={language} onLanguageChange={handleLanguageChange} />;
   }
 
   const headerTitle = {
@@ -130,89 +140,23 @@ export default function App() {
   }[activePanel];
 
   return (
-    <div className="app-container">
-      {/* Sidebar */}
-      <aside className="sidebar glass-panel">
-        <div>
-          <div className="sidebar-brand text-gradient-cyan">
-            <span style={{ fontSize: '1.8rem' }}>⚙️</span> {t('admin.brand')}
-          </div>
-          <ul className="sidebar-menu">
-            <li
-              className={`menu-item ${activePanel === 'chat' ? 'active' : ''}`}
-              onClick={() => setActivePanel('chat')}
-            >
-              💬 {t('admin.nav.chats')}
-            </li>
-            <li
-              className={`menu-item ${activePanel === 'users' ? 'active' : ''}`}
-              onClick={() => setActivePanel('users')}
-            >
-              👥 {t('admin.nav.users')}
-            </li>
-            <li
-              className={`menu-item ${activePanel === 'bans' ? 'active' : ''}`}
-              onClick={() => setActivePanel('bans')}
-            >
-              🚫 {t('admin.nav.bans')}
-            </li>
-            <li
-              className={`menu-item ${activePanel === 'geoip' ? 'active' : ''}`}
-              onClick={() => setActivePanel('geoip')}
-            >
-              🌍 {t('admin.nav.geoip')}
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', marginBottom: '16px' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.username}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.role}</div>
-          </div>
-          <div className="input-group" style={{ marginBottom: '16px' }}>
-            <label className="input-label">{t('common.language')}</label>
-            <select className="input-field" value={language} onChange={(e) => setLanguage(e.target.value as LanguageCode)}>
-              {languages.map((item) => (
-                <option key={item.code} value={item.code}>{item.label}</option>
-              ))}
-            </select>
-          </div>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={handleLogout}>
-            🚪 {t('common.logout')}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="main-content">
-        <header className="main-header glass-panel">
-          <div>
-            <h2 className="text-gradient-purple" style={{ textTransform: 'capitalize' }}>
-              {headerTitle}
-            </h2>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span className="badge badge-success">{t('common.online')}</span>
-            <span className="badge badge-primary">{user.role}</span>
-          </div>
-        </header>
-
-        <section className="panel-container">
-          {activePanel === 'chat' && (
-            <ConversationsPanel apiClient={apiClient} wsClient={wsClient} currentUser={user} t={t} />
-          )}
-          {activePanel === 'users' && (
-            <UsersPanel apiClient={apiClient} currentUser={user} t={t} />
-          )}
-          {activePanel === 'bans' && (
-            <BansPanel apiClient={apiClient} t={t} />
-          )}
-          {activePanel === 'geoip' && (
-            <GeoIpPanel apiClient={apiClient} t={t} />
-          )}
-        </section>
-      </main>
-    </div>
+    <AdminShell
+      activePanel={activePanel}
+      onPanelChange={setActivePanel}
+      username={user.username}
+      role={user.role}
+      language={language}
+      onLanguageChange={handleLanguageChange}
+      theme={theme}
+      onThemeChange={handleThemeChange}
+      onLogout={handleLogout}
+      headerTitle={headerTitle}
+      t={t}
+    >
+      {activePanel === 'chat' && <ConversationsPanel apiClient={apiClient} wsClient={wsClient} currentUser={user} t={t} />}
+      {activePanel === 'users' && <UsersPanel apiClient={apiClient} currentUser={user} t={t} />}
+      {activePanel === 'bans' && <BansPanel apiClient={apiClient} t={t} />}
+      {activePanel === 'geoip' && <GeoIpPanel apiClient={apiClient} t={t} />}
+    </AdminShell>
   );
 }

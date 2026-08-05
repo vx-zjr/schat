@@ -17,7 +17,7 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
   const [selectedUser, setSelectedUser] = useState<UserIdentity | null>(null);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'USER' | 'ADMIN' | 'MASTER'>('USER');
+  const [newRole, setNewRole] = useState<'USER' | 'MASTER'>('USER');
   const [permissionList, setPermissionList] = useState<string[]>([]);
   const [availablePermissions] = useState([
     'users.read',
@@ -65,7 +65,7 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
     }
   };
 
-  const handleUpdateUser = async (userId: string, status: 'ACTIVE' | 'DISABLED', role: 'MASTER' | 'ADMIN' | 'USER') => {
+  const handleUpdateUser = async (userId: string, status: 'ACTIVE' | 'DISABLED', role: 'MASTER' | 'USER') => {
     try {
       await apiClient.patch(`/admin/users/${userId}`, { status, role });
       loadUsers();
@@ -134,7 +134,7 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
               <tr key={u.id}>
                 <td style={{ fontWeight: 600 }}>{u.username}</td>
                 <td>
-                  <span className={`badge ${u.role === 'MASTER' ? 'badge-danger' : u.role === 'ADMIN' ? 'badge-warning' : 'badge-primary'}`}>
+                  <span className={`badge ${u.role === 'MASTER' ? 'badge-danger' : 'badge-primary'}`}>
                     {u.role}
                   </span>
                 </td>
@@ -179,7 +179,6 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
                       disabled={u.id === currentUser.id || u.role === 'MASTER'}
                     >
                       <option value="USER">USER</option>
-                      <option value="ADMIN">ADMIN</option>
                       {u.role === 'MASTER' && <option value="MASTER">MASTER</option>}
                     </select>
                   </div>
@@ -226,7 +225,6 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
                   onChange={(e) => setNewRole(e.target.value as any)}
                 >
                   <option value="USER">USER</option>
-                  <option value="ADMIN">ADMIN</option>
                   <option value="MASTER">{t('admin.users.masterOwner')}</option>
                 </select>
               </div>
