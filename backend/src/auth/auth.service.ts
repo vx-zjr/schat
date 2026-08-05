@@ -20,20 +20,41 @@ export class AuthService {
   ) {}
 
   async ensureMasterUser(): Promise<void> {
-    const existing = await this.prisma.user.findUnique({ where: { username: this.config.masterUsername } });
-    if (existing) {
+    const [masters, configuredUser] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { role: UserRole.MASTER },
+        select: { id: true, username: true },
+        take: 2
+      }),
+      this.prisma.user.findUnique({ where: { username: this.config.masterUsername } })
+    ]);
+
+    if (masters.length === 0 && !configuredUser) {
+      await this.prisma.user.create({
+        data: {
+          username: this.config.masterUsername,
+          passwordHash: await hashPassword(this.config.masterPassword),
+          role: UserRole.MASTER,
+          status: UserStatus.ACTIVE,
+          permissions: []
+        }
+      });
       return;
     }
 
-    await this.prisma.user.create({
-      data: {
-        username: this.config.masterUsername,
-        passwordHash: await hashPassword(this.config.masterPassword),
-        role: UserRole.MASTER,
-        status: UserStatus.ACTIVE,
-        permissions: []
-      }
-    });
+    if (configuredUser?.role === UserRole.USER) {
+      throw new Error(
+        'MASTER bootstrap failed: configured MASTER username is owned by a USER; rename that USER or update MASTER_USERNAME'
+      );
+    }
+
+    if (masters.length === 1 && masters[0].username === this.config.masterUsername) {
+      return;
+    }
+
+    throw new Error(
+      'MASTER bootstrap failed: expected exactly one MASTER with the configured username; repair user roles before starting'
+    );
   }
 
   async login(username: string, password: string): Promise<TokenPair> {

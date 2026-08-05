@@ -13,6 +13,7 @@ function createPrisma() {
     refreshTokens,
     user: {
       findUnique: jest.fn(({ where }) => users.find((user) => user.username === where.username || user.id === where.id) ?? null),
+      findMany: jest.fn(({ where, take }) => users.filter((user) => user.role === where.role).slice(0, take)),
       create: jest.fn(({ data }) => {
         const user = { id: `user-${users.length + 1}`, status: UserStatus.ACTIVE, permissions: [], ...data };
         users.push(user);
@@ -54,6 +55,60 @@ describe('AuthService', () => {
 
     expect(prisma.users).toHaveLength(1);
     expect(prisma.users[0].role).toBe(UserRole.MASTER);
+  });
+
+  it('accepts exactly one configured MASTER without creating another', async () => {
+    const prisma = createPrisma();
+    prisma.users.push({
+      id: 'master-1',
+      username: config.masterUsername,
+      passwordHash: 'hash',
+      role: UserRole.MASTER,
+      status: UserStatus.ACTIVE,
+      permissions: []
+    });
+    const service = new AuthService(prisma as any, new JwtService(), config);
+
+    await service.ensureMasterUser();
+
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects bootstrap when the configured MASTER username belongs to a USER', async () => {
+    const prisma = createPrisma();
+    prisma.users.push({
+      id: 'user-1',
+      username: config.masterUsername,
+      passwordHash: 'hash',
+      role: UserRole.USER,
+      status: UserStatus.ACTIVE,
+      permissions: []
+    });
+    const service = new AuthService(prisma as any, new JwtService(), config);
+
+    await expect(service.ensureMasterUser()).rejects.toThrow('configured MASTER username is owned by a USER');
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'a MASTER with a different username',
+      [{ id: 'master-1', username: 'other-master', role: UserRole.MASTER }]
+    ],
+    [
+      'multiple MASTER users',
+      [
+        { id: 'master-1', username: config.masterUsername, role: UserRole.MASTER },
+        { id: 'master-2', username: 'other-master', role: UserRole.MASTER }
+      ]
+    ]
+  ])('rejects bootstrap when %s exists', async (_description, users) => {
+    const prisma = createPrisma();
+    prisma.users.push(...users);
+    const service = new AuthService(prisma as any, new JwtService(), config);
+
+    await expect(service.ensureMasterUser()).rejects.toThrow('exactly one MASTER with the configured username');
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   it('logs in an active user and stores a refresh token hash', async () => {
