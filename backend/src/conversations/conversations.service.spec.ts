@@ -1,4 +1,5 @@
-import { AuditAction } from '@prisma/client';
+import { ConflictException } from '@nestjs/common';
+import { AuditAction, UserRole } from '@prisma/client';
 import { ConversationsService } from './conversations.service';
 
 describe('ConversationsService', () => {
@@ -42,6 +43,85 @@ describe('ConversationsService', () => {
       include: { members: true },
       orderBy: { updatedAt: 'desc' }
     });
+  });
+
+  it('returns only the direct conversation and MASTER peer', async () => {
+    const prisma: any = {
+      conversation: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'direct-1',
+          title: null,
+          createdAt: new Date('2026-08-05T00:00:00Z'),
+          updatedAt: new Date('2026-08-05T00:00:00Z'),
+          members: [
+            { userId: 'user-1', user: { id: 'user-1', username: 'alice', role: UserRole.USER } },
+            { userId: 'master-1', user: { id: 'master-1', username: 'master', role: UserRole.MASTER } }
+          ]
+        })
+      }
+    };
+    const service = new ConversationsService(prisma, { record: jest.fn() } as any);
+
+    await expect((service as any).getDirectConversation('user-1')).resolves.toEqual({
+      id: 'direct-1',
+      title: null,
+      createdAt: new Date('2026-08-05T00:00:00Z'),
+      updatedAt: new Date('2026-08-05T00:00:00Z'),
+      peer: { id: 'master-1', username: 'master' }
+    });
+    expect(prisma.conversation.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { directUserId: 'user-1' } })
+    );
+  });
+
+  it('rejects when the direct conversation is missing', async () => {
+    const prisma: any = { conversation: { findUnique: jest.fn().mockResolvedValue(null) } };
+    const service = new ConversationsService(prisma, { record: jest.fn() } as any);
+
+    await expect((service as any).getDirectConversation('user-1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rejects when the direct conversation is missing the requesting membership', async () => {
+    const prisma: any = {
+      conversation: {
+        findUnique: jest.fn().mockResolvedValue({
+          members: [{ userId: 'master-1', user: { id: 'master-1', username: 'master', role: UserRole.MASTER } }]
+        })
+      }
+    };
+    const service = new ConversationsService(prisma, { record: jest.fn() } as any);
+
+    await expect((service as any).getDirectConversation('user-1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rejects when the direct conversation has no MASTER peer', async () => {
+    const prisma: any = {
+      conversation: {
+        findUnique: jest.fn().mockResolvedValue({
+          members: [{ userId: 'user-1', user: { id: 'user-1', username: 'alice', role: UserRole.USER } }]
+        })
+      }
+    };
+    const service = new ConversationsService(prisma, { record: jest.fn() } as any);
+
+    await expect((service as any).getDirectConversation('user-1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rejects when the direct conversation has two MASTER peers', async () => {
+    const prisma: any = {
+      conversation: {
+        findUnique: jest.fn().mockResolvedValue({
+          members: [
+            { userId: 'user-1', user: { id: 'user-1', username: 'alice', role: UserRole.USER } },
+            { userId: 'master-1', user: { id: 'master-1', username: 'master', role: UserRole.MASTER } },
+            { userId: 'master-2', user: { id: 'master-2', username: 'master-two', role: UserRole.MASTER } }
+          ]
+        })
+      }
+    };
+    const service = new ConversationsService(prisma, { record: jest.fn() } as any);
+
+    await expect((service as any).getDirectConversation('user-1')).rejects.toBeInstanceOf(ConflictException);
   });
 });
 
