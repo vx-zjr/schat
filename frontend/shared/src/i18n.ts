@@ -10,6 +10,17 @@ export type LanguageCode = (typeof languages)[number]['code'];
 type TranslationKey = keyof typeof zhCN;
 
 const zhCN = {
+  'common.theme.light': '浅色',
+  'common.theme.dark': '深色',
+  'common.switchLanguage': '切换语言',
+  'common.openAccount': '打开账户菜单',
+  'common.mainNavigation': '主导航',
+  'common.back': '返回',
+  'admin.account.title': '账户',
+  'admin.nav.tools': '工具',
+  'user.login.masterDenied': '主人账号只能登录管理端',
+  'user.chat.initializationFailed': '聊天初始化失败',
+  'user.chat.retry': '重试',
   'common.language': '语言',
   'common.chinese': '中文',
   'common.english': 'English',
@@ -153,6 +164,17 @@ const zhCN = {
 } as const;
 
 const enUS: Record<TranslationKey, string> = {
+  'common.theme.light': 'Light',
+  'common.theme.dark': 'Dark',
+  'common.switchLanguage': 'Switch language',
+  'common.openAccount': 'Open account menu',
+  'common.mainNavigation': 'Main navigation',
+  'common.back': 'Back',
+  'admin.account.title': 'Account',
+  'admin.nav.tools': 'Tools',
+  'user.login.masterDenied': 'Master accounts can only sign in to the admin portal',
+  'user.chat.initializationFailed': 'Chat initialization failed',
+  'user.chat.retry': 'Retry',
   'common.language': 'Language',
   'common.chinese': '中文',
   'common.english': 'English',
