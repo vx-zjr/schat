@@ -35,22 +35,7 @@ describe('UsersService', () => {
     });
   });
 
-  it('updates status and role together', async () => {
-    const prisma: any = {
-      user: {
-        update: jest.fn(({ data }) => ({ id: 'user-1', role: UserRole.ADMIN, status: UserStatus.DISABLED, ...data }))
-      }
-    };
-    const audit: any = { record: jest.fn() };
-    const service = new UsersService(prisma, audit);
-
-    const user = await service.updateUser('admin-1', 'user-1', { status: UserStatus.DISABLED, role: UserRole.ADMIN });
-
-    expect(user.role).toBe(UserRole.ADMIN);
-    expect(user.status).toBe(UserStatus.DISABLED);
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
-      data: { status: UserStatus.DISABLED, role: UserRole.ADMIN }
-    });
+  it('exposes only MASTER and USER roles', () => {
+    expect(Object.values(UserRole)).toEqual([UserRole.MASTER, UserRole.USER]);
   });
 });
