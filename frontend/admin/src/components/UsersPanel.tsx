@@ -17,7 +17,6 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
   const [selectedUser, setSelectedUser] = useState<UserIdentity | null>(null);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'USER' | 'MASTER'>('USER');
   const [permissionList, setPermissionList] = useState<string[]>([]);
   const [availablePermissions] = useState([
     'users.read',
@@ -52,22 +51,20 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
     try {
       await apiClient.post('/admin/users', {
         username: newUsername,
-        password: newPassword,
-        role: newRole
+        password: newPassword
       });
       setShowCreateModal(false);
       setNewUsername('');
       setNewPassword('');
-      setNewRole('USER');
       loadUsers();
     } catch (err: any) {
       alert(err.response?.data?.message || err.message || t('admin.users.createFailed'));
     }
   };
 
-  const handleUpdateUser = async (userId: string, status: 'ACTIVE' | 'DISABLED', role: 'MASTER' | 'USER') => {
+  const handleUpdateUser = async (userId: string, status: 'ACTIVE' | 'DISABLED') => {
     try {
-      await apiClient.patch(`/admin/users/${userId}`, { status, role });
+      await apiClient.patch(`/admin/users/${userId}`, { status });
       loadUsers();
     } catch (err: any) {
       alert(err.response?.data?.message || err.message || t('admin.users.updateFailed'));
@@ -119,7 +116,7 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
       )}
 
       <div className="table-container glass-panel">
-        <table className="data-table">
+        <table className="data-table responsive-table">
           <thead>
             <tr>
               <th>{t('common.username')}</th>
@@ -132,25 +129,25 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
           <tbody>
             {users.map(u => (
               <tr key={u.id}>
-                <td style={{ fontWeight: 600 }}>{u.username}</td>
-                <td>
+                <td data-label={t('common.username')} style={{ fontWeight: 600 }}>{u.username}</td>
+                <td data-label={t('common.role')}>
                   <span className={`badge ${u.role === 'MASTER' ? 'badge-danger' : 'badge-primary'}`}>
                     {u.role}
                   </span>
                 </td>
-                <td>
+                <td data-label={t('common.status')}>
                   <select
                     value={u.status}
                     className="input-field"
                     style={{ padding: '4px 8px', fontSize: '0.8rem' }}
-                    onChange={(e) => handleUpdateUser(u.id, e.target.value as any, u.role)}
+                    onChange={(e) => handleUpdateUser(u.id, e.target.value as any)}
                     disabled={u.id === currentUser.id}
                   >
                     <option value="ACTIVE">{t('common.active')}</option>
                     <option value="DISABLED">{t('common.disabled')}</option>
                   </select>
                 </td>
-                <td style={{ maxWidth: '300px', flexWrap: 'wrap', gap: '4px' }}>
+                <td data-label={t('admin.users.permissions')} style={{ maxWidth: '300px', flexWrap: 'wrap', gap: '4px' }}>
                   {u.permissions && u.permissions.length > 0 ? (
                     u.permissions.map(p => (
                       <span key={p} className="badge badge-success" style={{ margin: '2px', textTransform: 'none', fontSize: '0.7rem' }}>
@@ -161,7 +158,7 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('common.none')}</span>
                   )}
                 </td>
-                <td>
+                <td data-label={t('common.actions')}>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       className="btn btn-secondary btn-sm"
@@ -170,17 +167,6 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
                     >
                       {t('admin.users.editPermissions')}
                     </button>
-
-                    <select
-                      value={u.role}
-                      className="input-field"
-                      style={{ padding: '4px 8px', fontSize: '0.8rem' }}
-                      onChange={(e) => handleUpdateUser(u.id, u.status, e.target.value as any)}
-                      disabled={u.id === currentUser.id || u.role === 'MASTER'}
-                    >
-                      <option value="USER">USER</option>
-                      {u.role === 'MASTER' && <option value="MASTER">MASTER</option>}
-                    </select>
                   </div>
                 </td>
               </tr>
@@ -216,17 +202,6 @@ export default function UsersPanel({ apiClient, currentUser, t }: UsersPanelProp
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                 />
-              </div>
-              <div className="input-group">
-                <label className="input-label">{t('common.role')}</label>
-                <select
-                  className="input-field"
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as any)}
-                >
-                  <option value="USER">USER</option>
-                  <option value="MASTER">{t('admin.users.masterOwner')}</option>
-                </select>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>{t('common.cancel')}</button>

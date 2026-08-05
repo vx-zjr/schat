@@ -45,7 +45,7 @@ export default function GeoIpPanel({ apiClient, t }: GeoIpPanelProps) {
           {t('admin.geoip.description')}
         </p>
 
-        <form onSubmit={handleLookup} style={{ display: 'flex', gap: '12px' }}>
+        <form className="geoip-lookup-form" onSubmit={handleLookup} style={{ display: 'flex', gap: '12px' }}>
           <div className="input-group" style={{ flexGrow: 1, marginBottom: 0 }}>
             <input
               type="text"
@@ -72,7 +72,7 @@ export default function GeoIpPanel({ apiClient, t }: GeoIpPanelProps) {
         <div className="glass-panel" style={{ padding: '32px', animation: 'fadeIn 0.3s ease-in-out' }}>
           <h4 className="text-gradient-cyan" style={{ fontSize: '1.1rem', marginBottom: '20px' }}>{t('admin.geoip.results')}</h4>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div className="geoip-results-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{t('admin.geoip.ip')}</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{result.ip}</div>

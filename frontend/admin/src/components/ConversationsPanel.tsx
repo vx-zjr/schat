@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { I18nKey, SchatApiClient, SchatWsClient } from 'shared';
 import { UserIdentity } from '../App';
 
@@ -121,6 +122,16 @@ export default function ConversationsPanel({ apiClient, wsClient, currentUser, t
     setTypingUsers({});
   };
 
+  const clearActiveConversation = () => {
+    if (activeConv) {
+      wsClient.leaveConversation(activeConv.id);
+    }
+    setEditingMessageId(null);
+    setEditingText('');
+    setTypingUsers({});
+    setActiveConv(null);
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!typedMessage.trim() || !activeConv) return;
@@ -184,7 +195,7 @@ export default function ConversationsPanel({ apiClient, wsClient, currentUser, t
   };
 
   return (
-    <div className="chat-dashboard glass-panel" style={{ height: 'calc(100vh - 170px)' }}>
+    <div className={`chat-dashboard glass-panel ${activeConv ? 'has-active-conversation' : ''}`} style={{ height: 'calc(100vh - 170px)' }}>
       <div className="chat-rooms">
         <div className="chat-rooms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h4 style={{ fontSize: '1rem' }}>{t('admin.chat.rooms')}</h4>
@@ -192,19 +203,23 @@ export default function ConversationsPanel({ apiClient, wsClient, currentUser, t
             + {t('admin.chat.create')}
           </button>
         </div>
-        <ul className="rooms-list">
+        <ul className="rooms-list" aria-label={t('admin.chat.rooms')}>
           {conversations.map(c => {
             const memberNames = c.members.map(m => getUserName(m.userId)).join(', ');
             return (
               <li
                 key={c.id}
-                className={`room-item ${activeConv?.id === c.id ? 'active' : ''}`}
-                onClick={() => handleSelectConversation(c)}
               >
-                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.title || `${t('admin.chat.rooms')}: ${c.id.substring(0, 8)}`}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {memberNames}
-                </div>
+                <button
+                  type="button"
+                  className={`room-item ${activeConv?.id === c.id ? 'active' : ''}`}
+                  onClick={() => handleSelectConversation(c)}
+                >
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.title || `${t('admin.chat.rooms')}: ${c.id.substring(0, 8)}`}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {memberNames}
+                  </div>
+                </button>
               </li>
             );
           })}
@@ -215,6 +230,16 @@ export default function ConversationsPanel({ apiClient, wsClient, currentUser, t
         {activeConv ? (
           <>
             <div className="chat-window-header">
+              {activeConv && (
+                <button
+                  type="button"
+                  className="icon-button compact-chat-back"
+                  onClick={clearActiveConversation}
+                  aria-label={t('common.back')}
+                >
+                  <ArrowLeft aria-hidden="true" />
+                </button>
+              )}
               <div>
                 <span style={{ fontWeight: 600 }}>{activeConv.title || `${t('admin.chat.rooms')}: ${activeConv.id}`}</span>
                 <span style={{ marginLeft: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>

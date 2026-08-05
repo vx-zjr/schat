@@ -592,9 +592,16 @@ h1, h2, h3, h4 {
 }
 
 .room-item {
+  display: block;
+  width: 100%;
   padding: 16px 20px;
+  border: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  background: transparent;
+  color: var(--text-main);
   cursor: pointer;
+  font: inherit;
+  text-align: left;
   transition: var(--transition-fast);
 }
 
@@ -679,6 +686,34 @@ h1, h2, h3, h4 {
 
 .chat-input-field {
   flex-grow: 1;
+}
+
+.compact-chat-back {
+  display: none;
+}
+
+@media (max-width:1023px) {
+  .chat-dashboard { height:calc(100dvh - 148px) !important; display:block; border-radius:14px; }
+  .chat-rooms { width:100%; height:100%; border-right:0; }
+  .chat-window-panel { display:none; width:100%; height:100%; }
+  .chat-dashboard.has-active-conversation .chat-rooms { display:none; }
+  .chat-dashboard.has-active-conversation .chat-window-panel { display:flex; }
+  .compact-chat-back { display:grid; }
+  .messages-list-wrapper { padding:14px 12px; }
+  .chat-input-area { padding:10px 10px calc(10px + env(safe-area-inset-bottom)); }
+
+  .responsive-table thead { display:none; }
+  .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display:block; width:100%; }
+  .responsive-table tr { margin-bottom:10px; padding:12px; border:1px solid var(--border-color); border-radius:14px; background:var(--bg-card); }
+  .responsive-table td { display:grid; grid-template-columns:minmax(92px,34%) minmax(0,1fr); gap:10px; padding:8px 0; border:0; }
+  .responsive-table td::before { content:attr(data-label); color:var(--text-muted); font-size:.78rem; }
+
+  .geoip-lookup-form { flex-direction:column; }
+  .geoip-results-grid { grid-template-columns:1fr !important; }
+}
+
+@media (min-width:1024px) {
+  .compact-chat-back { display:none; }
 }
 
 /* Typing indicator */

@@ -175,7 +175,7 @@ export default function BansPanel({ apiClient, t }: BansPanelProps) {
               {t('admin.bans.noActive')}
             </div>
           ) : (
-            <table className="data-table">
+            <table className="data-table responsive-table">
               <thead>
                 <tr>
                   <th>{t('admin.bans.target')}</th>
@@ -189,18 +189,18 @@ export default function BansPanel({ apiClient, t }: BansPanelProps) {
               <tbody>
                 {bans.map(b => (
                   <tr key={b.id}>
-                    <td style={{ fontWeight: 600 }}>{b.user?.username || b.ip || `ID: ${b.userId}`}</td>
-                    <td>
+                    <td data-label={t('admin.bans.target')} style={{ fontWeight: 600 }}>{b.user?.username || b.ip || `ID: ${b.userId}`}</td>
+                    <td data-label={t('admin.bans.scope')}>
                       <span className={`badge ${b.ip ? 'badge-danger' : 'badge-warning'}`}>
                         {b.ip ? t('admin.bans.ipBan') : t('admin.bans.userBan')}
                       </span>
                     </td>
-                    <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td data-label={t('admin.bans.reason')} style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {b.reason || t('admin.bans.noneStated')}
                     </td>
-                    <td>{b.createdBy}</td>
-                    <td>{new Date(b.createdAt).toLocaleDateString()}</td>
-                    <td>
+                    <td data-label={t('admin.bans.enforcedBy')}>{b.createdBy}</td>
+                    <td data-label={t('admin.bans.enforcedAt')}>{new Date(b.createdAt).toLocaleDateString()}</td>
+                    <td data-label={t('common.actions')}>
                       <button className="btn btn-secondary btn-sm" onClick={() => handleLiftBan(b.id)}>
                         {t('admin.bans.lift')}
                       </button>
