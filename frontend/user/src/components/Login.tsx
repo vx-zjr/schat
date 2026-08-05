@@ -21,28 +21,16 @@ export default function Login({ onLogin, error, t, language, onLanguageChange }:
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      width: '100vw',
-      background: 'radial-gradient(circle at 50% 50%, #08121f 0%, #02050a 100%)'
-    }}>
-      <div className="glass-panel" style={{
-        width: '400px',
-        padding: '40px',
-        boxShadow: '0 0 50px rgba(6, 182, 212, 0.15)',
-        textAlign: 'center'
-      }}>
+    <div className="login-screen">
+      <div className="login-card glass-panel">
         <h1 className="text-gradient-cyan" style={{ fontSize: '2rem', marginBottom: '8px' }}>schat</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '32px' }}>
           {t('user.login.subtitle')}
         </p>
 
         <div className="input-group" style={{ marginBottom: '24px', textAlign: 'left' }}>
-          <label className="input-label">{t('common.language')}</label>
-          <select className="input-field" value={language} onChange={(e) => onLanguageChange(e.target.value as LanguageCode)}>
+          <label className="input-label" htmlFor="login-language">{t('common.language')}</label>
+          <select id="login-language" className="input-field" value={language} onChange={(e) => onLanguageChange(e.target.value as LanguageCode)}>
             {languages.map((item) => (
               <option key={item.code} value={item.code}>{item.label}</option>
             ))}
@@ -66,8 +54,9 @@ export default function Login({ onLogin, error, t, language, onLanguageChange }:
 
         <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
           <div className="input-group">
-            <label className="input-label">{t('common.username')}</label>
+            <label className="input-label" htmlFor="login-username">{t('common.username')}</label>
             <input
+              id="login-username"
               type="text"
               className="input-field"
               placeholder={t('user.login.usernamePlaceholder')}
@@ -79,8 +68,9 @@ export default function Login({ onLogin, error, t, language, onLanguageChange }:
           </div>
 
           <div className="input-group" style={{ marginBottom: '24px' }}>
-            <label className="input-label">{t('common.password')}</label>
+            <label className="input-label" htmlFor="login-password">{t('common.password')}</label>
             <input
+              id="login-password"
               type="password"
               className="input-field"
               placeholder="••••••••"

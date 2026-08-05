@@ -1,69 +1,143 @@
-import { useEffect, useState } from 'react';
-import { createTranslator, DEFAULT_LANGUAGE, LanguageCode, languages, SchatApiClient, SchatWsClient } from 'shared';
-import Login from './components/Login';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import {
+  applyTheme,
+  createTranslator,
+  languages,
+  readLanguage,
+  readTheme,
+  SchatApiClient,
+  SchatWsClient,
+  writeLanguage,
+  writeTheme,
+  type LanguageCode,
+  type ThemeMode
+} from 'shared';
 import ChatWindow from './components/ChatWindow';
+import Login from './components/Login';
 import { deleteWebPushSubscription, registerWebPush } from './push';
+import type { DirectConversation, UserIdentity } from './types';
 
-export type UserIdentity = {
-  id: string;
-  username: string;
-  role: 'MASTER' | 'ADMIN' | 'USER';
-  status: 'ACTIVE' | 'DISABLED';
-  permissions: string[];
+type ViewState = 'booting' | 'login' | 'initializing' | 'initialization-error' | 'chat';
+
+type PendingSession = {
+  profile: UserIdentity;
+  accessToken: string;
 };
 
-type Conversation = {
-  id: string;
-  title: string | null;
-  createdAt: string;
-  updatedAt: string;
-  members: { id: string; userId: string; conversationId: string }[];
+const viewTransition = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+  transition: { duration: 0.18 }
 };
 
 export default function App() {
   const [user, setUser] = useState<UserIdentity | null>(null);
+  const [directConversation, setDirectConversation] = useState<DirectConversation | null>(null);
   const [apiClient, setApiClient] = useState<SchatApiClient | null>(null);
   const [wsClient, setWsClient] = useState<SchatWsClient | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [language, setLanguage] = useState<LanguageCode>(DEFAULT_LANGUAGE);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
-  const [usersList, setUsersList] = useState<{ [userId: string]: string }>({});
+  const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>('booting');
+  const [language, setLanguage] = useState<LanguageCode>(() => readLanguage(window.localStorage));
+  const [theme, setTheme] = useState<ThemeMode>(() => readTheme(
+    window.localStorage,
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  ));
+  const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
   const [webPushSubscriptionId, setWebPushSubscriptionId] = useState<string | null>(null);
+  const directConversationRef = useRef<DirectConversation | null>(null);
+  const apiClientRef = useRef<SchatApiClient | null>(null);
+  const wsClientRef = useRef<SchatWsClient | null>(null);
+  const bannedListenerCleanupRef = useRef<(() => void) | null>(null);
   const t = createTranslator(language);
 
+  const leaveAndDisconnect = () => {
+    const ws = wsClientRef.current;
+    const direct = directConversationRef.current;
+    bannedListenerCleanupRef.current?.();
+    bannedListenerCleanupRef.current = null;
+    if (direct) {
+      ws?.leaveConversation(direct.id);
+    }
+    ws?.disconnect();
+  };
+
+  const handleLogoutLocal = () => {
+    leaveAndDisconnect();
+    directConversationRef.current = null;
+    setUser(null);
+    setDirectConversation(null);
+    setPendingSession(null);
+    setInitializationError(null);
+    setWebPushSubscriptionId(null);
+    setViewState('login');
+  };
+
   useEffect(() => {
+    applyTheme(document.documentElement, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const ws = new SchatWsClient({ url: window.location.origin });
     const api = new SchatApiClient({
       baseURL: '',
-      onLogout: () => {
-        handleLogoutLocal();
-      },
-      onTokenRefreshed: (access) => {
-        if (wsClient) {
-          wsClient.connect(access);
+      onLogout: handleLogoutLocal,
+      onTokenRefreshed: (accessToken) => {
+        ws.connect(accessToken);
+        if (directConversationRef.current) {
+          ws.joinConversation(directConversationRef.current.id);
         }
       }
     });
 
-    const ws = new SchatWsClient({
-      url: window.location.origin
-    });
-
+    apiClientRef.current = api;
+    wsClientRef.current = ws;
     setApiClient(api);
     setWsClient(ws);
+    setViewState('login');
 
     return () => {
+      bannedListenerCleanupRef.current?.();
+      if (directConversationRef.current) {
+        ws.leaveConversation(directConversationRef.current.id);
+      }
       ws.disconnect();
+      apiClientRef.current = null;
+      wsClientRef.current = null;
     };
   }, []);
 
-  const handleLogoutLocal = () => {
-    setUser(null);
-    setConversations([]);
-    setActiveConv(null);
-    setWebPushSubscriptionId(null);
-    if (wsClient) {
-      wsClient.disconnect();
+  const initializeDirectChat = async (session: PendingSession) => {
+    if (!apiClient || !wsClient) return;
+    setInitializationError(null);
+    setViewState('initializing');
+
+    try {
+      const direct = await apiClient.get<DirectConversation>('/user/direct-conversation');
+      directConversationRef.current = direct;
+      setUser(session.profile);
+      setDirectConversation(direct);
+      wsClient.connect(session.accessToken);
+      wsClient.joinConversation(direct.id);
+      bannedListenerCleanupRef.current?.();
+      bannedListenerCleanupRef.current = wsClient.onUserBanned((banData: { userId?: string }) => {
+        if (banData.userId === session.profile.id) {
+          alert(t('user.banned'));
+          apiClientRef.current?.setTokens(null, null);
+          handleLogoutLocal();
+        }
+      });
+      setViewState('chat');
+
+      registerWebPush(apiClient)
+        .then(setWebPushSubscriptionId)
+        .catch((error) => console.info('Web Push registration skipped', error));
+    } catch (error: any) {
+      console.error(error);
+      setInitializationError(error.response?.data?.message || error.message || t('user.chat.initializationFailed'));
+      setViewState('initialization-error');
     }
   };
 
@@ -71,174 +145,134 @@ export default function App() {
     if (!apiClient || !wsClient) return;
     setLoginError(null);
 
+    let session: PendingSession;
     try {
       const data = await apiClient.post<{ accessToken: string; refreshToken: string }>('/auth/login', { username, password });
       apiClient.setTokens(data.accessToken, data.refreshToken);
-
       const profile = await apiClient.get<UserIdentity>('/auth/me');
+      if (profile.role === 'MASTER') {
+        apiClient.setTokens(null, null);
+        throw new Error(t('user.login.masterDenied'));
+      }
       if (profile.status === 'DISABLED') {
+        apiClient.setTokens(null, null);
         throw new Error(t('user.login.disabled'));
       }
-
-      setUser(profile);
-      wsClient.connect(data.accessToken);
-
-      wsClient.onUserBanned((banData: { userId?: string }) => {
-        if (banData.userId === profile.id) {
-          alert(t('user.banned'));
-          handleLogoutLocal();
-        }
-      });
-
-      const convList = await apiClient.get<Conversation[]>('/user/conversations');
-      setConversations(convList);
-
-      try {
-        const users = await apiClient.get<{ id: string; username: string }[]>('/admin/users');
-        const mapping: { [userId: string]: string } = {};
-        users.forEach(u => {
-          mapping[u.id] = u.username;
-        });
-        setUsersList(mapping);
-      } catch (e) {
-        console.log('Skipping users query (restricted role)');
-        mappingFallback(convList, profile);
-      }
-
-      registerWebPush(apiClient)
-        .then(setWebPushSubscriptionId)
-        .catch((error) => console.info('Web Push registration skipped', error));
-    } catch (err: any) {
-      console.error(err);
-      setLoginError(err.response?.data?.message || err.message || t('user.login.failed'));
+      session = { profile, accessToken: data.accessToken };
+      setPendingSession(session);
+    } catch (error: any) {
+      setLoginError(error.response?.data?.message || error.message || t('user.login.failed'));
+      setViewState('login');
+      return;
     }
-  };
 
-  const mappingFallback = (convs: Conversation[], self: UserIdentity) => {
-    const mapping: { [userId: string]: string } = { [self.id]: self.username };
-    convs.forEach(c => {
-      c.members.forEach(m => {
-        if (!mapping[m.userId]) {
-          mapping[m.userId] = `${t('common.user')} (${m.userId.substring(0, 5)})`;
-        }
-      });
-    });
-    setUsersList(mapping);
+    await initializeDirectChat(session);
   };
 
   const handleLogout = async () => {
     if (!apiClient) return;
     try {
-      const rfToken = apiClient.getRefreshToken();
+      const refreshToken = apiClient.getRefreshToken();
       await deleteWebPushSubscription(apiClient, webPushSubscriptionId);
-      if (rfToken) {
-        await apiClient.post('/auth/logout', { refreshToken: rfToken });
+      if (refreshToken) {
+        await apiClient.post('/auth/logout', { refreshToken });
       }
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
       apiClient.setTokens(null, null);
       handleLogoutLocal();
     }
   };
 
-  const handleSelectConv = (conv: Conversation) => {
-    if (activeConv) {
-      wsClient?.leaveConversation(activeConv.id);
-    }
-    setActiveConv(conv);
-    wsClient?.joinConversation(conv.id);
+  const handleLanguageChange = (nextLanguage: LanguageCode) => {
+    setLanguage(nextLanguage);
+    writeLanguage(window.localStorage, nextLanguage);
   };
 
-  if (!apiClient || !wsClient) {
-    return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('user.loading')}</div>
-      </div>
-    );
-  }
+  const handleToggleLanguage = () => {
+    const currentIndex = languages.findIndex((item) => item.code === language);
+    const nextLanguage = languages[(currentIndex + 1) % languages.length].code;
+    handleLanguageChange(nextLanguage);
+  };
 
-  if (!user) {
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    writeTheme(window.localStorage, nextTheme);
+  };
+
+  const renderView = () => {
+    if (viewState === 'booting' || !apiClient || !wsClient) {
+      return (
+        <motion.main key="booting" className="centered-state" {...viewTransition}>
+          <div className="state-message">{t('user.loading')}</div>
+        </motion.main>
+      );
+    }
+
+    if (viewState === 'initializing') {
+      return (
+        <motion.main key="initializing" className="centered-state" {...viewTransition}>
+          <div className="state-message">{t('user.loading')}</div>
+        </motion.main>
+      );
+    }
+
+    if (viewState === 'initialization-error') {
+      return (
+        <motion.main key="initialization-error" className="centered-state" {...viewTransition}>
+          <section className="state-card glass-panel" role="alert">
+            <h1>{t('user.chat.initializationFailed')}</h1>
+            {initializationError && <p>{initializationError}</p>}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => pendingSession && initializeDirectChat(pendingSession)}
+            >
+              {t('user.chat.retry')}
+            </button>
+          </section>
+        </motion.main>
+      );
+    }
+
+    if (viewState === 'chat' && user && directConversation) {
+      return (
+        <motion.main key="chat" className="direct-chat-shell" {...viewTransition}>
+          <div className="direct-chat-main">
+            <ChatWindow
+              apiClient={apiClient}
+              wsClient={wsClient}
+              conversation={directConversation}
+              currentUser={user}
+              theme={theme}
+              t={t}
+              onToggleLanguage={handleToggleLanguage}
+              onToggleTheme={handleToggleTheme}
+              onLogout={handleLogout}
+            />
+          </div>
+        </motion.main>
+      );
+    }
+
     return (
-      <Login
-        onLogin={handleLogin}
-        error={loginError}
-        t={t}
-        language={language}
-        onLanguageChange={setLanguage}
-      />
+      <motion.main key="login" className="login-state" {...viewTransition}>
+        <Login
+          onLogin={handleLogin}
+          error={loginError}
+          t={t}
+          language={language}
+          onLanguageChange={handleLanguageChange}
+        />
+      </motion.main>
     );
-  }
+  };
 
   return (
-    <div className="app-wrapper">
-      <aside className="sidebar-panel glass-panel">
-        <div>
-          <h2 className="text-gradient-cyan" style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '4px' }}>
-            {t('user.brand')}
-          </h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('user.environment')}</span>
-
-          <ul className="room-list">
-            {conversations.map(c => {
-              const membersText = c.members
-                .map(m => usersList[m.userId] || m.userId.substring(0, 5))
-                .join(', ');
-
-              return (
-                <li key={c.id} className={`room-card ${activeConv?.id === c.id ? 'active' : ''}`} onClick={() => handleSelectConv(c)}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }}>
-                    {c.title || t('user.roomFallback')}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    {membersText}
-                  </div>
-                </li>
-              );
-            })}
-            {conversations.length === 0 && (
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '40px' }}>
-                {t('user.noRooms')}
-              </div>
-            )}
-          </ul>
-        </div>
-
-        <div>
-          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', marginBottom: '16px' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.username}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('user.identityId')}: {user.id.substring(0, 8)}</div>
-          </div>
-          <div className="input-group" style={{ marginBottom: '16px' }}>
-            <label className="input-label">{t('common.language')}</label>
-            <select className="input-field" value={language} onChange={(e) => setLanguage(e.target.value as LanguageCode)}>
-              {languages.map((item) => (
-                <option key={item.code} value={item.code}>{item.label}</option>
-              ))}
-            </select>
-          </div>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={handleLogout}>
-            {t('user.exit')}
-          </button>
-        </div>
-      </aside>
-
-      <main className="chat-panel">
-        {activeConv ? (
-          <ChatWindow
-            apiClient={apiClient}
-            wsClient={wsClient}
-            activeConv={activeConv}
-            currentUser={user}
-            usersList={usersList}
-            t={t}
-          />
-        ) : (
-          <div className="glass-panel" style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-            {t('user.selectRoom')}
-          </div>
-        )}
-      </main>
-    </div>
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence mode="wait">{renderView()}</AnimatePresence>
+    </MotionConfig>
   );
 }
