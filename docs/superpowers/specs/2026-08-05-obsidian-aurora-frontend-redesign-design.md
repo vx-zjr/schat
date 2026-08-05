@@ -43,8 +43,8 @@ Continuous decorative motion is limited to slow, low-amplitude background breath
 
 Both clients are designed mobile-first.
 
-- Phone layouts are the primary composition and interaction target.
-- Tablet and desktop administration layouts progressively expose sidebars, multi-column views, full tables, and persistent utility controls. The USER client remains a single direct-chat surface at every size.
+- Compact layouts below 1024 CSS pixels are the primary composition and interaction target, covering phones and portrait tablets.
+- Administration layouts at 1024 CSS pixels and above progressively expose sidebars, multi-column views, full tables, and persistent utility controls. The USER client remains a single direct-chat surface at every size.
 - No supported viewport may require page-level horizontal scrolling.
 - Phone touch targets are at least 44 by 44 CSS pixels.
 - Safe-area insets are applied to fixed headers, bottom navigation, drawers, and the message composer.
@@ -58,13 +58,13 @@ Tablet and desktop need complete functionality and clean use of space, but do no
 
 The administration client is organized around an `AdminShell`.
 
-On phones, the shell contains no persistent left rail, sidebar, or page-width option panel. A compact top bar identifies the current module and exposes only its contextual action plus an account trigger. A safe-area-aware bottom bar provides four always-visible primary destinations: conversations, users, bans, and tools/GeoIP. Language, theme, signed-in identity, and logout live in an account bottom sheet opened from the top-right trigger.
+Below 1024 CSS pixels, the shell contains no persistent left rail, sidebar, or page-width option panel. A compact top bar identifies the current module and exposes only its contextual action plus an account trigger. A safe-area-aware bottom bar provides four always-visible primary destinations: conversations, users, bans, and tools/GeoIP. Language, theme, signed-in identity, and logout live in an account bottom sheet opened from the top-right trigger.
 
 Overview metrics use a single-column or compact two-column card grid depending on available width. Data tables transform into labeled record cards; record actions remain visible and secondary or batch actions move into a reachable bottom action sheet. Dialogs become bottom sheets when that improves reachability, while destructive confirmations remain explicit modal interruptions.
 
-The phone conversation module has two full-width states instead of an inner left column. Its initial state is the conversation list, with create-conversation in the top bar. Selecting a conversation replaces the list with the full-height chat and a clearly labeled back action. The room list and message view are never displayed side by side on a phone.
+The compact conversation module has two full-width states instead of an inner left column. Its initial state is the conversation list, with create-conversation in the top bar. Selecting a conversation replaces the list with the full-height chat and a clearly labeled back action. The room list and message view are never displayed side by side below 1024 CSS pixels.
 
-On tablet and desktop, the navigation expands into a persistent rail or sidebar. Panels display full data tables where appropriate, and filters/actions remain in a stable toolbar. Existing `UsersPanel`, `ConversationsPanel`, `BansPanel`, and `GeoIpPanel` retain their business responsibility and data flow.
+At 1024 CSS pixels and above, the navigation expands into a persistent rail or sidebar. Panels display full data tables where appropriate, and filters/actions remain in a stable toolbar. Existing `UsersPanel`, `ConversationsPanel`, `BansPanel`, and `GeoIpPanel` retain their business responsibility and data flow.
 
 ### User client
 
@@ -172,7 +172,7 @@ Downloads during implementation may use the owner-provided local proxy at `127.0
 ## Acceptance Criteria
 
 - Both clients preserve in-scope functional behavior, except for the explicitly superseded USER multi-conversation flow, and pass their updated tests and production builds.
-- Phone-sized layouts are the most polished supported experience, contain no persistent left sidebar or page-width option panel, and have no page-level horizontal overflow.
+- Compact layouts below 1024 CSS pixels are the most polished supported experience, contain no persistent left sidebar or page-width option panel, and have no page-level horizontal overflow.
 - Every existing administration destination remains reachable from the phone shell in no more than two actions.
 - The USER client opens one full-width direct chat after login and never renders a room list at any viewport size.
 - Tablet and desktop expose all in-scope functions with coherent expanded layouts.

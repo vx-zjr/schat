@@ -143,9 +143,9 @@ Theme is stored as `light` or `dark`. On first visit, the client follows `prefer
 
 ### Responsive behavior and motion
 
-Phones use the full dynamic viewport with safe-area padding. The composer stays above the on-screen keyboard, and controls retain touch-friendly hit areas. Tablet and desktop layouts center the single chat surface and apply a readable maximum width instead of restoring a sidebar.
+Compact viewports below 1024 CSS pixels use the full dynamic viewport with safe-area padding. The composer stays above the on-screen keyboard, and controls retain touch-friendly hit areas. Wider layouts center the single chat surface and apply a readable maximum width instead of restoring a sidebar.
 
-No authenticated USER viewport renders the legacy left option panel, room card, identity block, language select, or full-width logout button. On phones the chat consumes the entire viewport. Its compact header presents the MASTER username and presence on the left and the language, theme, and logout icons on the right. Attachment upload moves beside the message field so it remains reachable without a separate panel or navigation destination.
+No authenticated USER viewport renders the legacy left option panel, room card, identity block, language select, or full-width logout button. Below 1024 CSS pixels the chat consumes the entire viewport. Its compact header presents the MASTER username and presence on the left and the language, theme, and logout icons on the right. Attachment upload moves beside the message field so it remains reachable without a separate panel or navigation destination.
 
 The transition from initialization to chat uses a short opacity/position entrance. Message insertion, upload state, and typing feedback keep restrained motion and honor `prefers-reduced-motion`. No animation delays access to the composer.
 
